@@ -57,7 +57,7 @@ main{padding:24px 0 90px}
 .field{display:flex;flex-direction:column;gap:4px}
 .hr{height:1px;background:var(--hairline);margin:16px 0}
 .notice{background:var(--primary);color:#fff;border-radius:var(--r-lg);padding:14px 18px;font-size:13px}
-.info{background:var(--cream-strong);color:var(--ink);border-radius:var(--r-md);padding:10px 13px;font-size:13px}
+.info{background:var(--cream-strong);color:var(--ink);border-radius:var(--r-md);padding:10px 13px;font-size:13px;word-break:keep-all}
 .err{color:var(--error);font-size:12px;font-weight:600}
 .tag{display:inline-block;background:var(--cream-strong);border-radius:var(--r-pill);padding:2px 9px;font-size:11px;font-weight:700;color:var(--ink)}
 .sechead{font-size:15px;margin-bottom:4px}
@@ -167,8 +167,6 @@ table.tt.clsTT td .sub{font-size:16px;font-weight:700}
 /* 진도표: 반 칸 클릭 가능 표시 + 등록 폼(PC 한 줄 / 모바일 줄바꿈) + 오늘 항목 강조 */
 td.progressable{cursor:pointer}
 td.progressable:hover{outline:2px solid var(--primary-active);outline-offset:-2px}
-td.pickupable{cursor:pointer}
-td.pickupable:hover{outline:2px dashed var(--teal);outline-offset:-2px;background:#eef7f4}
 .progAddRow{display:flex;gap:8px;align-items:flex-start;margin-top:10px}
 .progAddRow textarea{flex:1;min-height:38px;resize:vertical}
 .progEntry{border:1px solid var(--hairline);border-radius:10px;padding:10px 12px;margin-bottom:8px}
@@ -188,6 +186,23 @@ td.pickupable:hover{outline:2px dashed var(--teal);outline-offset:-2px;backgroun
 .addForm input,.addForm textarea,.addForm select{width:100%;font-family:inherit;border:1px solid var(--hairline);border-radius:8px;padding:9px 11px;font-size:13px;margin-bottom:8px}
 .addForm textarea{min-height:70px;resize:vertical}
 .addForm .hint{font-size:11.5px;color:var(--muted);margin-bottom:8px}
+/* "학교 및 학년 안내" 모달만 PC 화면에서 크게 — 모바일(위 1024px 이하 분기)에는 전혀 영향 없음 */
+@media (min-width:1025px){
+  #noticeModal .sheet{width:960px;padding:38px 40px}
+  #noticeModal .sheet h2{font-size:32px}
+  #noticeModal .sheet p.muted{font-size:19px}
+  #noticeModal .sheet .x{font-size:30px}
+  #noticeModal nav.subtabs button{font-size:20px;padding:15px 20px}
+  #noticeModal .noticeItem{padding:20px 0}
+  #noticeModal .noticeItem h4{font-size:19px}
+  #noticeModal .noticeItem .body{font-size:17px;line-height:1.75}
+  #noticeModal .noticeItem .meta{font-size:14px}
+  #noticeModal .noticeDoneChk{font-size:15px}
+  #noticeModal .addForm .hint{font-size:15px}
+  #noticeModal .addForm input,#noticeModal .addForm textarea,#noticeModal .addForm select{font-size:17px;padding:11px 14px}
+  #noticeModal .addForm textarea{min-height:90px}
+  #noticeModal .btn.sm{font-size:15px;padding:10px 18px}
+}
 
 .chgDetailRow{display:flex;gap:16px;align-items:center;padding:16px 4px;border-bottom:1px solid var(--hairline)}
 .chgDetailRow:last-child{border-bottom:0}
@@ -673,10 +688,6 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
         </div>
 
         <div class="ttSidebar">
-          <div class="sidecard" id="pickupCard">
-            <h3>🙋 비어있는 시간에 다른 수업 받아오기</h3>
-            <div id="pickupBody"><p class="muted" style="margin:0">왼쪽 시간표에서 비어있는 칸을 클릭하면, 그 시간에 진행 중인 다른 반 수업 중 받아올 수 있는 것이 여기에 표시됩니다.</p></div>
-          </div>
           <div class="sidecard notice-card" onclick="openChgModal()">
             <h3>📋 이번 주 변경된 수업 <span class="more">전체보기 →</span></h3>
             <div id="chgSummary"></div>
@@ -747,6 +758,14 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
         </div>
         <div id="calGrid"></div>
         <div id="calDetail" class="calDetailBox" hidden></div>
+        <div class="addForm" id="calLockPrompt" hidden>
+          <div class="hint">🔒 1학년 담임 수정 코드를 입력하면 학사일정을 추가·수정할 수 있습니다.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input id="calHomeroomCodeInput" type="password" placeholder="담임 수정 코드" style="flex:1;min-width:160px" onkeydown="if(event.key==='Enter')tryUnlockHomeroom('cal')">
+            <button class="btn sm" onclick="tryUnlockHomeroom('cal')">확인</button>
+          </div>
+          <div id="calHomeroomCodeErr" class="err" style="margin-top:6px"></div>
+        </div>
         <div class="addForm" id="calAddForm" hidden>
           <div class="hint" id="calFormHint">+ 새 학사일정 추가 (1학년 담임 전용)</div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
@@ -796,6 +815,14 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
           <button id="noticeSubTab-done" onclick="switchNoticeSubtab('done')">완료사항</button>
         </nav>
         <div id="noticeList"></div>
+        <div class="addForm" id="noticeLockPrompt" hidden>
+          <div class="hint">🔒 1학년 담임 수정 코드를 입력하면 안내를 추가·수정할 수 있습니다.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input id="noticeHomeroomCodeInput" type="password" placeholder="담임 수정 코드" style="flex:1;min-width:160px" onkeydown="if(event.key==='Enter')tryUnlockHomeroom('notice')">
+            <button class="btn sm" onclick="tryUnlockHomeroom('notice')">확인</button>
+          </div>
+          <div id="noticeHomeroomCodeErr" class="err" style="margin-top:6px"></div>
+        </div>
         <div class="addForm" id="noticeAddForm" hidden>
           <div class="hint" id="noticeFormHint">+ 새 안내 추가 (1학년 담임 전용)</div>
           <input id="newTitle" placeholder="제목 (목록에는 제목만 보입니다)">
@@ -910,7 +937,7 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
 
 <script>
 /* ===== 저장 유틸 ===== */
-const LS={cfg:'dgs_cfg_v3',user:'dgs_user_v3',changes:'dgs_changes_v3',academic:'dgs_academic_v3',form:'dgs_form_v3',notices:'dgs_notices_v1',code:'dgs_code_v1'};
+const LS={cfg:'dgs_cfg_v3',user:'dgs_user_v3',changes:'dgs_changes_v3',academic:'dgs_academic_v3',form:'dgs_form_v3',notices:'dgs_notices_v1',code:'dgs_code_v1',homeroomOk:'dgs_hrok_v1'};
 const _mem={};
 function lsGet(k){try{const v=localStorage.getItem(k);return v==null?(_mem[k]??null):v}catch(e){return _mem[k]??null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){_mem[k]=v}}
@@ -939,7 +966,20 @@ function isManager(){const m=(getForm().managers||'').split(/[,\s]+/).filter(Boo
 // (여기에 더해 "수업계 담당자" 이름도 등록해두면 그 이름으로 로그인한 사람만 실제로 수정할 수 있습니다)
 function mgrAccessOK(){return new URLSearchParams(location.search).get('mgr')==='1'}
 // 1학년 담임 여부 — [수업계] 탭에서 이름을 등록해두면 그 사람만 "학교 및 학년 안내"에 새 글을 추가할 수 있음
-function isHomeroom(){const m=(getForm().homerooms||'').split(/[,\s]+/).filter(Boolean);return m.includes(ME)||REMOTE_HOMEROOMS.includes(ME)}
+// 명단에 있다고 바로 수정 권한을 주지 않음 — 등록된 "담임코드"까지 맞아야 실제로 수정 가능(isHomeroom).
+// isHomeroomName은 "이 사람이 담임 명단에는 있는가"만 보는 용도(코드 입력창을 보여줄지 판단 등).
+function isHomeroomName(){const m=(getForm().homerooms||'').split(/[,\s]+/).filter(Boolean);return m.includes(ME)||REMOTE_HOMEROOMS.includes(ME)}
+function isHomeroom(){return isHomeroomName()&&lsGet(LS.homeroomOk)==='1'}
+function tryUnlockHomeroom(which){
+  const input=document.getElementById(which+'HomeroomCodeInput'),err=document.getElementById(which+'HomeroomCodeErr');
+  const v=(input.value||'').trim();
+  if(!HOMEROOM_CODE){err.textContent='담임 수정 코드가 아직 설정되어 있지 않습니다. 관리자에게 문의하세요.';return}
+  if(v&&v===HOMEROOM_CODE){
+    lsSet(LS.homeroomOk,'1');
+    if(which==='cal'){renderCalModal();renderCalWeekSummary();}
+    else{renderNoticeModalList();renderNoticeSummary();}
+  }else{err.textContent='코드가 올바르지 않습니다.'}
+}
 
 /* ===== CSV ===== */
 function parseCSV(t){const rows=[];let row=[],cur='',q=false;for(let i=0;i<t.length;i++){const c=t[i];
@@ -1366,7 +1406,7 @@ function boot(){
   fetchAppsScript(appsUrl).then(j=>{
     buildModel(j.rows,j.teachers||c.te);applyRemoteSync(j);
     SCHOOL_CODES=(j.schoolCode||'12345').split(',').map(s=>s.trim()).filter(Boolean);PROGRESS_ALLOW_LIST=j.progressAllow||[];
-    COTEACH_PAIRS=j.coteachPairs||[];COTEACH_SWAPS=j.coteachSwaps||[];
+    COTEACH_PAIRS=j.coteachPairs||[];COTEACH_SWAPS=j.coteachSwaps||[];HOMEROOM_CODE=j.homeroomCode||'';
     afterLoad();
   }).catch(showErr);
 }
@@ -1374,7 +1414,7 @@ function getCfg(){try{return JSON.parse(lsGet(LS.cfg))||{}}catch(e){return{}}}
 function setCfg(c){lsSet(LS.cfg,JSON.stringify(c))}
 async function fetchCSVUrl(url){const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);return parseCSV(await r.text())}
 let ACTIVE_APPS_URL=null,REMOTE_HOMEROOMS=[];
-let SCHOOL_CODES=['12345'],PROGRESS_ALLOW_LIST=[],PROGRESS_ALLOWED=false;
+let SCHOOL_CODES=['12345'],PROGRESS_ALLOW_LIST=[],PROGRESS_ALLOWED=false,HOMEROOM_CODE='';
 async function sbGetConfig(){
   const{data,error}=await sb.from('config').select('key,value');
   if(error)throw error;
@@ -1466,7 +1506,8 @@ async function fetchAppsScript(url){
   const weeks=Number(cfg['표시주수'])||null;
   const schoolCode=cfg['학교코드']||'12345';
   const progressAllow=(cfg['진도표접근허용']||'').split(',').map(s=>s.trim()).filter(Boolean);
-  return{rows,academic,notices,homerooms,teachers,weeks,swaps,schoolCode,progressAllow,coteachPairs,coteachSwaps};
+  const homeroomCode=cfg['담임코드']||'';
+  return{rows,academic,notices,homerooms,teachers,weeks,swaps,schoolCode,progressAllow,coteachPairs,coteachSwaps,homeroomCode};
 }
 // 앱스크립트에서 받아온 학사일정/안내/담임명단을 이 브라우저의 화면에도 그대로 반영(단방향: 시트→화면).
 // 학사일정·안내는 1학년 담임이 addCal()/addNotice()로 등록하면 시트에 저장되고, 그 결과가 다시 여기로 돌아와 반영됨.
@@ -1599,7 +1640,7 @@ function doLogin(){
   if(pl)pl.innerHTML='<div class="card" style="text-align:center;padding:80px 24px"><h2 style="font-size:36px;font-weight:800;margin:0">선생님 로그인 중입니다.</h2></div>';
   setTimeout(enterApp,150);
 }
-function logout(){lsDel(LS.user);lsDel(LS.code);location.reload()}
+function logout(){lsDel(LS.user);lsDel(LS.code);lsDel(LS.homeroomOk);location.reload()}
 function renderBrand(){
   const f=getForm();const el=document.getElementById('brandText');if(!el)return;
   el.innerHTML='<b>'+f.school+'</b> · '+(f.semester||'')+' 수업교체 시스템';
@@ -1725,9 +1766,6 @@ function ttTable(name,opts){
       }else if(opts.self&&c&&!c.block&&c.grade&&c.cls&&(opts.progress||coteachPartnerFor(subjFull(name,c),name))){
         cls.push('progressable');
         attr=' onclick="openProgModal('+d+','+p+',\''+esc(c.grade)+'\',\''+esc(c.cls)+'\',\''+esc(subjFull(name,c)||c.label)+'\')"';
-      }else if(opts.self&&!c){
-        cls.push('pickupable');
-        attr=' onclick="ttEmptyClick('+d+','+p+')"';
       }
       h+='<td class="'+cls.join(' ')+'"'+attr+'>'+inner+'</td>';
     }
@@ -1735,13 +1773,8 @@ function ttTable(name,opts){
   }
   return h+'</tbody></table>';
 }
-function renderTimetable(){document.getElementById('ttWrap').innerHTML=ttTable(ME,{self:true,effective:true,progress:PROGRESS_ALLOWED,sel:TT_PICK});renderTTSidebar()}
-// 내 시간표에서 비어있는 칸을 직접 클릭해 그 시간에 진행 중인 다른 반 수업을 받아오는 기능(공강 시간에 시수 보충 등)
-let TT_PICK=null;
-function ttEmptyClick(d,p){
-  if(TT_PICK&&TT_PICK.d===d&&TT_PICK.p===p){TT_PICK=null;renderTimetable();return}
-  TT_PICK={d,p};renderTimetable();
-}
+function renderTimetable(){document.getElementById('ttWrap').innerHTML=ttTable(ME,{self:true,effective:true,progress:PROGRESS_ALLOWED});renderTTSidebar()}
+// "빈 시간에 다른 수업 받아오기"는 [수업교체/보강] 탭에서만 쓰는 기능 — 내 시간표에서는 쓰지 않음.
 function volunteerCandidates(actor,d,p){
   const candidates=[];
   for(const t of M.teachers){
@@ -1752,15 +1785,6 @@ function volunteerCandidates(actor,d,p){
   }
   candidates.sort((a,b)=>a.tier-b.tier||a.teacher.localeCompare(b.teacher,'ko'));
   return candidates;
-}
-function renderPickupPanel(){
-  const box=document.getElementById('pickupBody');if(!box)return;
-  if(!TT_PICK){box.innerHTML='<p class="muted" style="margin:0">왼쪽 시간표에서 비어있는 칸을 클릭하면, 그 시간에 진행 중인 다른 반 수업 중 받아올 수 있는 것이 여기에 표시됩니다.</p>';return}
-  const{d,p}=TT_PICK;
-  const candidates=volunteerCandidates(ME,d,p);
-  let h='<div class="info">'+DAYNAMES[d]+'('+md(dayDate(d))+') '+p+'교시 — 지금 비어있는 시간입니다. 이 시간에 진행되는 다른 반 수업을 받아올 수 있습니다.</div>';
-  h+=volunteerSelectHTML(candidates,d,p,",'"+esc(ME)+"'");
-  box.innerHTML=h;
 }
 
 /* ===== 진도표 (반 칸 클릭 → 확대 팝업) ===== */
@@ -1868,7 +1892,7 @@ async function saveProgress(){
 }
 
 /* ===== 내 시간표 오른쪽 사이드 카드 3개 ===== */
-function renderTTSidebar(){renderPickupPanel();renderChgSummary();renderCalWeekSummary();renderNoticeSummary()}
+function renderTTSidebar(){renderChgSummary();renderCalWeekSummary();renderNoticeSummary()}
 
 /* --- 이번 주 변경된 수업 요약 카드 + 확대 모달(기존 상세비교 재사용) --- */
 function renderChgSummary(){
@@ -1972,6 +1996,7 @@ function renderCalModal(){
   document.getElementById('calGrid').innerHTML=html;
   document.getElementById('calDetail').hidden=true;
   document.getElementById('calAddForm').hidden=!isHomeroom();
+  document.getElementById('calLockPrompt').hidden=!(isHomeroomName()&&!isHomeroom());
 }
 let CAL_EDIT_ID=null;
 function showCalDetail(i){
@@ -2083,17 +2108,17 @@ function renderNoticeSummary(){
   };
   // 학년안내는 지정된 1학년 담임 선생님만 볼 필요가 있어서(불필요한 공유 방지), 그 외 교사에게는
   // 요약 카드에서부터 아예 안 보이게 함(학교안내만 표시).
-  el.innerHTML=group('school','학교')+(isHomeroom()?group('grade','학년'):'');
+  el.innerHTML=group('school','학교')+(isHomeroomName()?group('grade','학년'):'');
 }
-function openNoticeModal(){if(!isHomeroom()&&NOTICE_CAT==='grade')NOTICE_CAT='school';renderNoticeModalList();document.getElementById('noticeModal').classList.add('on')}
+function openNoticeModal(){if(!isHomeroomName()&&NOTICE_CAT==='grade')NOTICE_CAT='school';renderNoticeModalList();document.getElementById('noticeModal').classList.add('on')}
 function closeNoticeModal(){document.getElementById('noticeModal').classList.remove('on')}
 let NOTICE_CAT='school',NOTICE_SUBTAB='pending',NOTICE_OPEN=new Set();
-function switchNoticeCat(cat){if(cat==='grade'&&!isHomeroom())return;NOTICE_CAT=cat;cancelNoticeEdit();renderNoticeModalList()}
+function switchNoticeCat(cat){if(cat==='grade'&&!isHomeroomName())return;NOTICE_CAT=cat;cancelNoticeEdit();renderNoticeModalList()}
 function switchNoticeSubtab(sub){NOTICE_SUBTAB=sub;renderNoticeModalList()}
 function toggleNoticeOpen(id){if(NOTICE_OPEN.has(id))NOTICE_OPEN.delete(id);else NOTICE_OPEN.add(id);renderNoticeModalList()}
 function renderNoticeModalList(){
-  document.getElementById('noticeCatTab-grade').hidden=!isHomeroom();
-  if(!isHomeroom()&&NOTICE_CAT==='grade')NOTICE_CAT='school';
+  document.getElementById('noticeCatTab-grade').hidden=!isHomeroomName();
+  if(!isHomeroomName()&&NOTICE_CAT==='grade')NOTICE_CAT='school';
   document.getElementById('noticeCatTab-school').classList.toggle('on',NOTICE_CAT==='school');
   document.getElementById('noticeCatTab-grade').classList.toggle('on',NOTICE_CAT==='grade');
   document.getElementById('noticeSubTab-pending').classList.toggle('on',NOTICE_SUBTAB==='pending');
@@ -2112,6 +2137,7 @@ function renderNoticeModalList(){
     (isHomeroom()?' <button class="btn sm ghost" style="margin-left:8px" onclick="event.stopPropagation();startNoticeEdit(\''+n.id+'\')">수정</button> <button class="btn sm ghost" onclick="event.stopPropagation();delNoticeConfirm(\''+n.id+'\')">삭제</button>':'')+'</div></div>'
   ).join(''):'<p class="muted">'+(NOTICE_SUBTAB==='done'?'완료된 안내가 없습니다.':'등록된 안내가 없습니다.')+'</p>';
   document.getElementById('noticeAddForm').hidden=!isHomeroom();
+  document.getElementById('noticeLockPrompt').hidden=!(isHomeroomName()&&!isHomeroom());
 }
 let NOTICE_EDIT_ID=null;
 // 기존 안내를 클릭해서 그대로 폼에 불러와 고칠 수 있게 함 — 저장하면 앱스크립트로 업데이트되어 다른 사람 화면에도 반영됨
@@ -2470,7 +2496,7 @@ function confirmVolunteer(otherTeacher,d,p,actor){
     ()=>{Store.add({type:'sub',applicant:otherTeacher,sameDept:sameDept(actor,otherTeacher),reason:val('mReason'),writeDate:val('mWrite'),initiator:actor,
       neisSkip:document.getElementById('mNeisSkip').checked,
       absent:{date:val('mAbs'),grade:c.grade,cls:c.cls,period:p,subject:subjFull(otherTeacher,c)},
-      cover:{teacher:actor,subject:val('mCoverSubj')},makeup:{date:val('mMk'),period:val('mMkP')}});TT_PICK=null;done()});
+      cover:{teacher:actor,subject:val('mCoverSubj')},makeup:{date:val('mMk'),period:val('mMkP')}});done()});
 }
 
 function showSubPanel(d,p){
