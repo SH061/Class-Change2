@@ -536,6 +536,7 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
   table.tt.clsTT td.slot{height:58px}
   table.tt.clsTT td .cl{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
   table.tt.clsTT td .sub{font-size:9px}
+  table.tt.clsTT td .blk{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
   table.tt.clsTT thead th span{font-size:12px!important}
   table.tt.clsTT tbody th span{font-size:11px!important}
   table.tt.clsTT tbody th span:nth-of-type(2){font-size:6.8px!important;white-space:nowrap!important;letter-spacing:-.6px;display:block}
@@ -2440,7 +2441,7 @@ function renderClassTTGeneric(selId,wrapId){
 // 모바일에서 칸이 좁아 과목명이 잘리면(말줄임표) 안 보이니, 그 칸 안에 다 들어올 때까지 글자를 조금씩 줄임
 function fitClsCellText(container){
   if(!window.matchMedia('(max-width:600px)').matches)return;
-  container.querySelectorAll('table.tt.clsTT td .cl').forEach(el=>{
+  container.querySelectorAll('table.tt.clsTT td .cl, table.tt.clsTT td .blk').forEach(el=>{
     let size=parseFloat(getComputedStyle(el).fontSize),guard=0;
     while(el.scrollWidth>el.clientWidth+0.5&&size>6.5&&guard<12){size-=0.5;el.style.fontSize=size+'px';guard++}
   });
