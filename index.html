@@ -89,7 +89,7 @@ table.tt td .cl{font-weight:700;color:var(--ink);font-size:19px;line-height:1.15
 table.tt td .sub{display:block;font-size:11px;color:var(--muted);line-height:1.2}
 table.tt td .elec{display:block;width:fit-content;margin:1px auto 0;font-size:11px;line-height:1.3;background:none;color:#6b5fa8;padding:0;font-weight:800}
 table.tt td.elective{background:#e6e1f4}
-table.tt td .blk{color:var(--muted-soft);font-size:11px}
+table.tt td .blk{color:var(--muted-soft);font-size:19px;font-weight:700;line-height:1.15}
 table.tt td.mk-vac{background:var(--yellow)}
 table.tt td.mk-fill{background:var(--mint)}
 table.tt td.mk-fill .cl{color:var(--ink)}
@@ -2801,7 +2801,7 @@ function checkTodayNotice(){
 }
 
 /* ===== 수업교체일지 (원본 서식, A4 세로) ===== */
-let JILJI_SEL=null,JILJI_DATE=null;
+let JILJI_SEL=null,JILJI_DATES=new Set();
 function jiljiMine(){
   const who=SWACTOR||ME;
   // 내가 신청한 것뿐 아니라, 내가 시작한(initiator) 맞교체·연쇄이동은 관련된 다른 선생님 몫도 함께 뽑을 수 있어야 함.
@@ -2824,32 +2824,32 @@ function renderJilji(){
 }
 function renderJiljiSelector(mine){
   const el=document.getElementById('jiljiSelWrap');if(!el)return;
-  if(!mine.length){el.innerHTML='';JILJI_SEL=null;JILJI_DATE=null;return}
+  if(!mine.length){el.innerHTML='';JILJI_SEL=null;JILJI_DATES=new Set();return}
   if(!JILJI_SEL)JILJI_SEL=new Set();
   else{const ids=new Set(mine.map(x=>x.id));[...JILJI_SEL].forEach(id=>{if(!ids.has(id))JILJI_SEL.delete(id)})}
   const dates=[...new Set(mine.map(x=>x.absent.date).filter(Boolean))].sort();
-  if(JILJI_DATE&&!dates.includes(JILJI_DATE))JILJI_DATE=null;
-  const dayed=JILJI_DATE?mine.filter(x=>x.absent.date===JILJI_DATE):[];
+  [...JILJI_DATES].forEach(d=>{if(!dates.includes(d))JILJI_DATES.delete(d)});
+  const dayed=mine.filter(x=>JILJI_DATES.has(x.absent.date)).sort((a,b)=>(a.absent.date||'').localeCompare(b.absent.date||''));
   const who=SWACTOR||ME;
   el.innerHTML='<div class="card noprint" style="margin-bottom:14px"><h3 style="font-size:13px;margin-bottom:8px">인쇄할 건 선택 ('+JILJI_SEL.size+' / '+mine.length+')</h3>'+
-    '<div class="field" style="max-width:240px"><label>날짜 선택</label><select onchange="setJiljiDate(this.value)">'+
-    '<option value="">-- 날짜를 선택하세요 --</option>'+
-    dates.map(d=>'<option value="'+d+'" '+(d===JILJI_DATE?'selected':'')+'>'+dotFull(dparse(d))+'</option>').join('')+
-    '</select></div>'+
-    (JILJI_DATE?
+    '<div class="field"><label>날짜 선택 (여러 날짜 함께 볼 수 있음)</label>'+
+    '<div class="row" style="flex-wrap:wrap;gap:6px">'+
+    dates.map(d=>'<label class="jsel" style="display:inline-flex;width:auto"><input type="checkbox" '+(JILJI_DATES.has(d)?'checked':'')+' onchange="toggleJiljiDate(\''+d+'\',this.checked)"> '+dotFull(dparse(d))+'</label>').join('')+
+    '</div></div>'+
+    (dayed.length?
       dayed.map(r=>{const a=r.absent;
         return '<label class="jsel"><input type="checkbox" '+(JILJI_SEL.has(r.id)?'checked':'')+' onchange="toggleJiljiSel(\''+r.id+'\',this.checked)">'+
           (r.applicant!==who?'<b>'+r.applicant+'</b> · ':'')+
           (a.date?dotShort(dparse(a.date)):'')+' '+a.grade+'-'+a.cls+' '+a.period+'교시 '+a.subject+' — '+(r.type==='swap'?'맞교체':'보강')+' · '+r.cover.teacher+'</label>';
       }).join('')+
-      '<div class="row" style="margin-top:8px"><button class="btn sm ghost" onclick="jiljiSelAll(true)">이 날짜 전체 선택</button><button class="btn sm ghost" onclick="jiljiSelAll(false)">이 날짜 전체 해제</button></div>'
+      '<div class="row" style="margin-top:8px"><button class="btn sm ghost" onclick="jiljiSelAll(true)">선택한 날짜 전체 선택</button><button class="btn sm ghost" onclick="jiljiSelAll(false)">선택한 날짜 전체 해제</button></div>'
       :'<p class="muted" style="margin-top:8px">날짜를 선택하면 그 날짜의 교체·보강 건이 여기 나옵니다.</p>')+
     '</div>';
 }
-function setJiljiDate(d){JILJI_DATE=d||null;renderJilji()}
+function toggleJiljiDate(d,on){if(on)JILJI_DATES.add(d);else JILJI_DATES.delete(d);renderJilji()}
 function toggleJiljiSel(id,on){if(!JILJI_SEL)JILJI_SEL=new Set();if(on)JILJI_SEL.add(id);else JILJI_SEL.delete(id);renderJilji()}
 function jiljiSelAll(on){
-  const dayed=JILJI_DATE?jiljiMine().filter(x=>x.absent.date===JILJI_DATE):[];
+  const dayed=jiljiMine().filter(x=>JILJI_DATES.has(x.absent.date));
   if(!JILJI_SEL)JILJI_SEL=new Set();
   dayed.forEach(r=>{if(on)JILJI_SEL.add(r.id);else JILJI_SEL.delete(r.id)});
   renderJilji();
