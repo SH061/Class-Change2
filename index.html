@@ -1274,10 +1274,15 @@ function acFor(isoDate){
   return null;
 }
 function dayBlocked(i){return acFor(iso(dayDate(i)))}
-// 하루 전체가 아니라 특정 교시만 막는 일정(예: 영어듣기평가 3교시) — {period: 표시할 제목} 형태로 반환
-function acPeriodBlocks(isoDate){
+// 하루 전체가 아니라 특정 교시만 막는 일정(예: 영어듣기평가 3교시) — {period: 표시할 제목} 형태로 반환.
+// 학년마다 날짜가 다른 경우(1학년 화, 2학년 수, 3학년 목처럼)가 있어서, 대상 학년(grade)을 넘기면
+// 그 학년이 대상인 일정만 반영함 — 안 넘기면(학년을 모르는 빈 칸 등) 전체 학년 대상 일정만 반영.
+function acPeriodBlocks(isoDate,grade){
   const map={};
-  acForRange(isoDate).forEach(x=>{(x.periods||[]).forEach(p=>{map[p]=x.title||x.type})});
+  acForRange(isoDate).forEach(x=>{
+    if(x.grades&&x.grades.length&&(!grade||!x.grades.includes(+grade)))return;
+    (x.periods||[]).forEach(p=>{map[p]=x.title||x.type});
+  });
   return map;
 }
 
@@ -1656,8 +1661,8 @@ function ttTable(name,opts){
       const blk=dayBlocked(d),cls=['slot'];let inner='';
       if(blk&&(blk.type!=='단축'||p>(blk.last||7))){
         h+='<td class="slot holiday"><span class="blk">'+(blk.type==='단축'?'단축':blk.type)+'</span></td>';continue;}
-      const pblk=acPeriodBlocks(iso(dayDate(d)))[p];
       const rawC0=opts.effective?effectiveCell(name,d,p):t.cells[d][p];
+      const pblk=acPeriodBlocks(iso(dayDate(d)),rawC0&&rawC0.grade)[p];
       if(pblk){
         // 영어듣기평가처럼 하루 전체가 아니라 이 교시만 수업이 없어지는 경우 — 원래 이 시간에 수업이
         // 있던 선생님은 그 교시에 감독으로 들어가는 게 보통이라, 그냥 안내문만 띄우면 "내가 감독인지"
@@ -2234,7 +2239,7 @@ function classScheduleLive(gradeCls){
 }
 function renderClassTTGeneric(selId,wrapId){
   const sel=document.getElementById(selId);if(!sel||!sel.value)return;
-  const gradeCls=sel.value;const cells=classScheduleLive(gradeCls);
+  const gradeCls=sel.value;const cells=classScheduleLive(gradeCls);const clsGrade=gradeCls.split('-')[0];
   let h='<table class="tt clsTT"><colgroup><col class="phead">'+DAYNAMES.map(()=>'<col>').join('')+'</colgroup><thead><tr><th>교시</th>'+
     DAYNAMES.map((d,i)=>'<th><span style="font-size:26px;font-weight:800;white-space:nowrap">'+md(dayDate(i))+'('+d+')</span></th>').join('')+'</tr></thead><tbody>';
   for(const p of PERIODS){
@@ -2242,7 +2247,7 @@ function renderClassTTGeneric(selId,wrapId){
     for(let d=0;d<5;d++){
       const blk=dayBlocked(d),c=cells[d][p];
       if(blk&&(blk.type!=='단축'||p>(blk.last||7))){h+='<td class="slot holiday"><span class="blk">'+(blk.type==='단축'?'단축':blk.type)+'</span></td>';continue}
-      const pblk=acPeriodBlocks(iso(dayDate(d)))[p];
+      const pblk=acPeriodBlocks(iso(dayDate(d)),clsGrade)[p];
       if(pblk){
         // 영어듣기평가 등 이 교시만 수업이 없어지는 경우 — 원래 이 반에 들어오던 선생님이 감독으로
         // 들어가는 게 보통이므로, 과목/선생님을 그대로 보여주고 그 아래에 시험명을 함께 적어줌.
