@@ -769,7 +769,7 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
             <button type="button" class="dcDateField" data-datefield="calEnd" onclick="openDatePicker('calEnd','calEndLabel','종료일(같으면 비워둠)')" style="flex:1;justify-content:center">📅 <span id="calEndLabel">종료일(같으면 비워둠)</span></button>
             <input id="calStart" type="hidden"><input id="calEnd" type="hidden">
           </div>
-          <select id="calCategory" style="margin-top:8px"></select>
+          <select id="calCategory" style="margin-top:8px" onchange="calCategoryChanged()"></select>
           <input id="calLast" type="number" min="1" max="7" placeholder="단축수업이면 마지막 교시(예: 4)" style="margin-top:8px">
           <input id="calPeriods" placeholder="특정 교시만 수업 불가(예: 영어듣기평가 3교시 → 3, 콤마로 여러 개)" style="margin-top:8px">
           <input id="calTitle" placeholder="제목 (예: 1차 지필시험, 수학여행)" style="margin-top:8px">
@@ -1999,13 +1999,19 @@ function renderCalWeekSummary(){
 let CAL_Y=0,CAL_M=0;
 function openCalModal(){
   const now=weekMon();CAL_Y=now.getFullYear();CAL_M=now.getMonth()+1;
-  renderCalCategoryOptions();renderCalModal();
+  renderCalCategoryOptions();calCategoryChanged();renderCalModal();
   document.getElementById('calModal').classList.add('on');
 }
 function closeCalModal(){document.getElementById('calModal').classList.remove('on')}
 function calNav(delta){CAL_M+=delta;if(CAL_M<1){CAL_M=12;CAL_Y--}if(CAL_M>12){CAL_M=1;CAL_Y++}renderCalModal()}
 function renderCalCategoryOptions(){
   document.getElementById('calCategory').innerHTML=AC_TYPES.map(t=>'<option value="'+t+'">'+t+'</option>').join('');
+}
+// 분류가 "휴업일"이면 실제로 학교 전체가 쉬는 날인 경우가 대부분이라, 매번 체크박스를 따로
+// 켜야 하는 실수(수능일처럼 체크가 빠져 수업일수 계산에 그대로 잡히는 문제)를 막기 위해 자동으로 켬.
+// 사용자가 원하면 그 뒤에 직접 체크를 풀 수 있음(강제 고정 아님).
+function calCategoryChanged(){
+  if(val('calCategory')==='휴업일')document.getElementById('calNoClass').checked=true;
 }
 function renderCalModal(){
   document.getElementById('calModalTitle').textContent=CAL_Y+'년 '+CAL_M+'월 학사일정';
@@ -2086,6 +2092,7 @@ function resetCalForm(){
   setDateField('calStart','calStartLabel','','시작일');setDateField('calEnd','calEndLabel','','종료일(같으면 비워둠)');
   document.getElementById('calLast').value='';document.getElementById('calPeriods').value='';document.getElementById('calTitle').value='';document.getElementById('calBody').value='';
   document.getElementById('calNoClass').checked=false;document.getElementById('calHideStudent').checked=false;[1,2,3].forEach(g=>document.getElementById('calG'+g).checked=false);
+  calCategoryChanged();
 }
 // addNotice와 같은 이유로 낙관적 업데이트: 먼저 이 화면에 반영하고, 서버 저장은 뒤에서 진행.
 async function addCal(){
