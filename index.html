@@ -167,6 +167,8 @@ table.tt.clsTT td .sub{font-size:16px;font-weight:700}
 /* 진도표: 반 칸 클릭 가능 표시 + 등록 폼(PC 한 줄 / 모바일 줄바꿈) + 오늘 항목 강조 */
 td.progressable{cursor:pointer}
 td.progressable:hover{outline:2px solid var(--primary-active);outline-offset:-2px}
+td.pickupable{cursor:pointer}
+td.pickupable:hover{outline:2px dashed var(--teal);outline-offset:-2px;background:#eef7f4}
 .progAddRow{display:flex;gap:8px;align-items:flex-start;margin-top:10px}
 .progAddRow textarea{flex:1;min-height:38px;resize:vertical}
 .progEntry{border:1px solid var(--hairline);border-radius:10px;padding:10px 12px;margin-bottom:8px}
@@ -671,6 +673,10 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
         </div>
 
         <div class="ttSidebar">
+          <div class="sidecard" id="pickupCard">
+            <h3>🙋 비어있는 시간에 다른 수업 받아오기</h3>
+            <div id="pickupBody"><p class="muted" style="margin:0">왼쪽 시간표에서 비어있는 칸을 클릭하면, 그 시간에 진행 중인 다른 반 수업 중 받아올 수 있는 것이 여기에 표시됩니다.</p></div>
+          </div>
           <div class="sidecard notice-card" onclick="openChgModal()">
             <h3>📋 이번 주 변경된 수업 <span class="more">전체보기 →</span></h3>
             <div id="chgSummary"></div>
@@ -1092,22 +1098,6 @@ function depts(n){return M.info[n]?.depts||new Set()}
 // "동교과" = 교사·과목표 3번째 칸에 적은 교과(예: 국어/수학/사회/과학 등)가 같음.
 // 해당 교과 자격증이 있으면 지금 어떤 과목을 가르치든 그 교과 보강이 가능하다는 뜻(과목명이 달라도 무관).
 function sameDept(a,b){const A=depts(a),B=depts(b);for(const x of A)if(B.has(x))return true;return false}
-// "동교과군" = 동교과가 없을 때 확장하는 상위 묶음(기초/탐구/체육·예술/생활·교양) — 교육과정 교과군 기준.
-const CURR_GROUP={
-  '국어':'기초','수학':'기초','영어':'기초','한국사':'기초',
-  '사회':'탐구','도덕':'탐구','역사':'탐구','지리':'탐구','일반사회':'탐구','윤리':'탐구',
-  '과학':'탐구','물리':'탐구','화학':'탐구','생명과학':'탐구','지구과학':'탐구',
-  '체육':'체육·예술','예술':'체육·예술','음악':'체육·예술','미술':'체육·예술',
-  '기술':'생활·교양','기술가정':'생활·교양','기술·가정':'생활·교양','정보':'생활·교양',
-  '제2외국어':'생활·교양','한문':'생활·교양','교양':'생활·교양','진로':'생활·교양','보건':'생활·교양',
-  '환경':'생활·교양','논술':'생활·교양','심리':'생활·교양','철학':'생활·교양','중국어':'생활·교양','일본어':'생활·교양'
-};
-function currGroupOf(subj){return CURR_GROUP[subj]||null}
-function sameCurrGroup(a,b){
-  const A=depts(a),B=depts(b);
-  for(const x of A){const gx=currGroupOf(x);if(!gx)continue;for(const y of B)if(currGroupOf(y)===gx)return true;}
-  return false;
-}
 function subjFull(n,c){if(c&&c.subj)return c.subj;return M.info[n]?.subject||''}
 // 시수 부족 등으로 원래 과목이 아닌 걸 가르치며 보강하는 경우 — 보강 교과를 직접 고르거나 입력할 수 있게
 function allSubjects(){
@@ -1167,8 +1157,7 @@ function movePartners(from,to,actor){
     if(teachesClassOnDay(t.name,myClass,from.d))tier=1;
     else if(teachesClassAnyDay(t.name,myClass))tier=2;
     else if(sameDept(actor,t.name))tier=3;      // 동교과
-    else if(sameCurrGroup(actor,t.name))tier=4; // 동교과군(동교과가 없을 때 확장)
-    else continue; // 이 반과 무관하고 교과(군)도 다른 교사는 후보에서 제외
+    else continue; // 이 반과 무관하고 교과도 다른 교사는 후보에서 제외
     out.push({partner:t.name,cls:c2,tier});
   }
   out.sort((a,b)=>a.tier-b.tier||a.partner.localeCompare(b.partner,'ko'));
@@ -1240,14 +1229,13 @@ function findChains(from,to,actor){
 }
 function subCandidates(d,p,actor){
   actor=actor||ME;
-  const my=effectiveCell(actor,d,p);if(!my||my.block)return{same:[],group:[],other:[]};
-  const same=[],group=[],other=[];
+  const my=effectiveCell(actor,d,p);if(!my||my.block)return{same:[],other:[]};
+  const same=[],other=[];
   for(const t of M.teachers){if(t.name===actor)continue;if(!isFreeEff(t.name,d,p))continue;
     if(sameDept(actor,t.name))same.push(t.name);
-    else if(sameCurrGroup(actor,t.name))group.push(t.name);
     else other.push(t.name);
   }
-  return{same,group,other,elective:my.elective};
+  return{same,other,elective:my.elective};
 }
 
 /* ===== 날짜 / 주 (지난 주 제외) ===== */
@@ -1284,15 +1272,17 @@ function getAcademic(){try{return (JSON.parse(lsGet(LS.academic))||[]).map(normA
 function setAcademic(a){lsSet(LS.academic,JSON.stringify(a))}
 function acForRange(isoDate){return getAcademic().filter(x=>isoDate>=x.date&&isoDate<=x.end)}
 // 시간표 렌더링(ttTable 등)이 기대하는 옛 계약({type,last}|null)은 그대로 유지 — 휴업/휴일은 종일 차단, 단축은 지정 교시 이후만 차단
-function acFor(isoDate){
-  const hits=acForRange(isoDate);
+// grade를 넘기면 그 학년이 대상인(또는 전체 학년 대상인) 일정만 반영 — 안 넘기면(학년을 모르는 빈 칸 등)
+// 전체 학년 대상 일정만 반영. 예: "1차 지필고사"가 2학년만 대상이면 1학년 교사의 그날 수업엔 영향 없음.
+function acFor(isoDate,grade){
+  const hits=acForRange(isoDate).filter(x=>!x.grades||!x.grades.length||(grade&&x.grades.includes(+grade)));
   const full=hits.find(x=>x.noClass);
   if(full)return{type:full.title||full.type,last:0};
   const short=hits.find(x=>x.type==='단축');
   if(short)return{type:'단축',last:short.last||7};
   return null;
 }
-function dayBlocked(i){return acFor(iso(dayDate(i)))}
+function dayBlocked(i,grade){return acFor(iso(dayDate(i)),grade)}
 // 하루 전체가 아니라 특정 교시만 막는 일정(예: 영어듣기평가 3교시) — {period: 표시할 제목} 형태로 반환.
 // 학년마다 날짜가 다른 경우(1학년 화, 2학년 수, 3학년 목처럼)가 있어서, 대상 학년(grade)을 넘기면
 // 그 학년이 대상인 일정만 반영함 — 안 넘기면(학년을 모르는 빈 칸 등) 전체 학년 대상 일정만 반영.
@@ -1693,10 +1683,11 @@ function ttTable(name,opts){
   for(const p of PERIODS){
     h+='<tr><th><span class="pnum">'+p+'</span><span class="ptime">'+periodTimeLabel(p)+'</span></th>';
     for(let d=0;d<5;d++){
-      const blk=dayBlocked(d),cls=['slot'];let inner='';
+      const cls=['slot'];let inner='';
+      const rawC0=opts.effective?effectiveCell(name,d,p):t.cells[d][p];
+      const blk=dayBlocked(d,rawC0&&rawC0.grade);
       if(blk&&(blk.type!=='단축'||p>(blk.last||7))){
         h+='<td class="slot holiday"><span class="blk">'+(blk.type==='단축'?'단축':blk.type)+'</span></td>';continue;}
-      const rawC0=opts.effective?effectiveCell(name,d,p):t.cells[d][p];
       const pblk=acPeriodBlocks(iso(dayDate(d)),rawC0&&rawC0.grade)[p];
       if(pblk){
         // 영어듣기평가처럼 하루 전체가 아니라 이 교시만 수업이 없어지는 경우 — 원래 이 시간에 수업이
@@ -1734,6 +1725,9 @@ function ttTable(name,opts){
       }else if(opts.self&&c&&!c.block&&c.grade&&c.cls&&(opts.progress||coteachPartnerFor(subjFull(name,c),name))){
         cls.push('progressable');
         attr=' onclick="openProgModal('+d+','+p+',\''+esc(c.grade)+'\',\''+esc(c.cls)+'\',\''+esc(subjFull(name,c)||c.label)+'\')"';
+      }else if(opts.self&&!c){
+        cls.push('pickupable');
+        attr=' onclick="ttEmptyClick('+d+','+p+')"';
       }
       h+='<td class="'+cls.join(' ')+'"'+attr+'>'+inner+'</td>';
     }
@@ -1741,7 +1735,33 @@ function ttTable(name,opts){
   }
   return h+'</tbody></table>';
 }
-function renderTimetable(){document.getElementById('ttWrap').innerHTML=ttTable(ME,{self:true,effective:true,progress:PROGRESS_ALLOWED});renderTTSidebar()}
+function renderTimetable(){document.getElementById('ttWrap').innerHTML=ttTable(ME,{self:true,effective:true,progress:PROGRESS_ALLOWED,sel:TT_PICK});renderTTSidebar()}
+// 내 시간표에서 비어있는 칸을 직접 클릭해 그 시간에 진행 중인 다른 반 수업을 받아오는 기능(공강 시간에 시수 보충 등)
+let TT_PICK=null;
+function ttEmptyClick(d,p){
+  if(TT_PICK&&TT_PICK.d===d&&TT_PICK.p===p){TT_PICK=null;renderTimetable();return}
+  TT_PICK={d,p};renderTimetable();
+}
+function volunteerCandidates(actor,d,p){
+  const candidates=[];
+  for(const t of M.teachers){
+    if(t.name===actor)continue;
+    const c=effectiveCell(t.name,d,p);
+    if(!c||c.block||c.elective)continue;
+    candidates.push({teacher:t.name,cls:c,tier:sameDept(actor,t.name)?1:2});
+  }
+  candidates.sort((a,b)=>a.tier-b.tier||a.teacher.localeCompare(b.teacher,'ko'));
+  return candidates;
+}
+function renderPickupPanel(){
+  const box=document.getElementById('pickupBody');if(!box)return;
+  if(!TT_PICK){box.innerHTML='<p class="muted" style="margin:0">왼쪽 시간표에서 비어있는 칸을 클릭하면, 그 시간에 진행 중인 다른 반 수업 중 받아올 수 있는 것이 여기에 표시됩니다.</p>';return}
+  const{d,p}=TT_PICK;
+  const candidates=volunteerCandidates(ME,d,p);
+  let h='<div class="info">'+DAYNAMES[d]+'('+md(dayDate(d))+') '+p+'교시 — 지금 비어있는 시간입니다. 이 시간에 진행되는 다른 반 수업을 받아올 수 있습니다.</div>';
+  h+=volunteerSelectHTML(candidates,d,p,",'"+esc(ME)+"'");
+  box.innerHTML=h;
+}
 
 /* ===== 진도표 (반 칸 클릭 → 확대 팝업) ===== */
 // 내가 맡은 반 목록 — 팝업 제목 옆 드롭다운에서 반을 바꿔가며 볼 수 있게, 원본 시간표(raw, 시수 무관하게 전부)에서 뽑음
@@ -1848,7 +1868,7 @@ async function saveProgress(){
 }
 
 /* ===== 내 시간표 오른쪽 사이드 카드 3개 ===== */
-function renderTTSidebar(){renderChgSummary();renderCalWeekSummary();renderNoticeSummary()}
+function renderTTSidebar(){renderPickupPanel();renderChgSummary();renderCalWeekSummary();renderNoticeSummary()}
 
 /* --- 이번 주 변경된 수업 요약 카드 + 확대 모달(기존 상세비교 재사용) --- */
 function renderChgSummary(){
@@ -2353,7 +2373,7 @@ function renderClassTTGeneric(selId,wrapId){
   for(const p of PERIODS){
     h+='<tr><th><span style="font-size:22px;font-weight:800">'+p+'</span><br><span style="font-weight:600;font-size:13px;color:#8e8b82;white-space:nowrap">'+periodTimeLabel(p)+'</span></th>';
     for(let d=0;d<5;d++){
-      const blk=dayBlocked(d),c=cells[d][p];
+      const blk=dayBlocked(d,clsGrade),c=cells[d][p];
       if(blk&&(blk.type!=='단축'||p>(blk.last||7))){h+='<td class="slot holiday"><span class="blk">'+(blk.type==='단축'?'단축':blk.type)+'</span></td>';continue}
       const pblk=acPeriodBlocks(iso(dayDate(d)),clsGrade)[p];
       if(pblk){
@@ -2419,43 +2439,38 @@ function dragLeave(e){e.currentTarget.classList.remove('drop-ok')}
 function dropOn(e,d,p){e.preventDefault();e.currentTarget.classList.remove('drop-ok');if(DRAG)doMove(DRAG,{d,p});DRAG=null}
 function slotClick(d,p){if(PICK&&PICK.d===d&&PICK.p===p){PICK=null;renderSwap();showSubPanel(d,p);return}PICK={d,p};renderSwap();showSubPanel(d,p)}
 function emptyClick(d,p){if(PICK){doMove(PICK,{d,p});PICK=null;renderSwap();return}showVolunteerPanel(d,p)}
+// candidates(volunteerCandidates 결과)를 "1-1반부터 순서대로" 정렬된 select 한 칸 + 받아오기 버튼으로 렌더링.
+// actorArg는 onclick에 넘길 추가 인자 문자열(예: ",'조시현'") — 비우면 confirmVolunteer가 SWACTOR를 기본으로 씀.
+function volunteerSelectHTML(candidates,d,p,actorArg){
+  if(!candidates.length)return '<p class="muted" style="margin-top:10px">이 시간에 대신 맡을 수 있는 다른 반 수업이 없습니다.</p>';
+  const sorted=candidates.slice().sort((a,b)=>(+a.cls.grade-+b.cls.grade)||(+a.cls.cls-+b.cls.cls));
+  const opts=sorted.map(o=>'<option value="'+esc(o.teacher)+'">'+esc(o.cls.label)+'반 - '+esc(o.teacher)+'('+esc(subjFull(o.teacher,o.cls)||o.cls.label)+')'+(o.tier===1?' · 동교과':'')+'</option>').join('');
+  const selId='volSel_'+d+'_'+p;
+  return '<div class="field" style="margin-top:10px"><select id="'+selId+'">'+opts+'</select></div>'+
+    '<button class="btn sm" style="margin-top:8px" onclick="confirmVolunteer(document.getElementById(\''+selId+'\').value,'+d+','+p+(actorArg||'')+')">이 수업 받아오기</button>';
+}
 function showVolunteerPanel(d,p){
   const box=document.getElementById('swResult');
-  const candidates=[];
-  for(const t of M.teachers){
-    if(t.name===SWACTOR)continue;
-    const c=effectiveCell(t.name,d,p);
-    if(!c||c.block||c.elective)continue;
-    let tier;
-    if(sameDept(SWACTOR,t.name))tier=1;else if(sameCurrGroup(SWACTOR,t.name))tier=2;else continue;
-    candidates.push({teacher:t.name,cls:c,tier});
-  }
-  candidates.sort((a,b)=>a.tier-b.tier||a.teacher.localeCompare(b.teacher,'ko'));
+  const candidates=volunteerCandidates(SWACTOR,d,p);
   let h='<div class="info">'+DAYNAMES[d]+'('+md(dayDate(d))+') '+p+'교시 — 지금 '+SWACTOR+' 선생님이 비어있는 시간입니다. 이 시간에 진행되는 다른 반 수업을 대신 맡을 수 있습니다.</div>';
-  if(!candidates.length){h+='<p class="muted" style="margin-top:10px">이 시간에 대신 맡을 수 있는(동교과·동교과군) 다른 반 수업이 없습니다.</p>';box.innerHTML=h;return}
-  const tierLabel={1:'동교과',2:'동교과군(동교과가 없어 확장)'};
-  let cur=null;
-  candidates.forEach(o=>{
-    if(o.tier!==cur){cur=o.tier;h+='<div class="tierhead"><span class="n">'+cur+'</span>'+tierLabel[cur]+'<span class="d"></span></div>';}
-    h+='<div class="opt"><span class="lead">'+o.teacher+'</span><span class="muted">'+o.cls.label+' ('+(subjFull(o.teacher,o.cls)||'-')+')</span>'+
-      '<span class="sp"></span><button class="btn sm ghost" onclick="confirmVolunteer(\''+o.teacher+'\','+d+','+p+')">이 수업 대신 맡기</button></div>';
-  });
+  h+=volunteerSelectHTML(candidates,d,p,'');
   box.innerHTML=h;
 }
-function confirmVolunteer(otherTeacher,d,p){
+function confirmVolunteer(otherTeacher,d,p,actor){
+  actor=actor||SWACTOR;
   const c=effectiveCell(otherTeacher,d,p);
   openModal('보강 대신 맡기',
-    '<p class="muted">'+DAYNAMES[d]+' '+p+'교시 <b>'+c.label+'</b> ('+otherTeacher+' 선생님 수업)을 '+SWACTOR+' 선생님이 대신 맡습니다.</p>'+
+    '<p class="muted">'+DAYNAMES[d]+' '+p+'교시 <b>'+c.label+'</b> ('+otherTeacher+' 선생님 수업)을 '+actor+' 선생님이 대신 맡습니다.</p>'+
     '<div class="field"><label>결강 날짜</label><input id="mAbs" type="date" value="'+iso(dayDate(d))+'"></div>'+
     subjPickerField('mCoverSubj','보강 교과 (수업시수 보전을 위해 원래 교과로 고정됩니다)',subjFull(otherTeacher,c),true)+
     '<div class="field"><label>보강계획 날짜 (되갚는 수업, 없으면 비움)</label><input id="mMk" type="date"></div>'+
     '<div class="field"><label>보강계획 교시</label><input id="mMkP" type="number" min="1" max="7"></div>'+
     '<label style="display:flex;align-items:center;gap:6px;margin-top:8px"><input type="checkbox" id="mNeisSkip" style="width:auto"> 나이스 미반영 (제가 수업시수가 부족해서 가져오는 것 — 정식 보강 아님)</label>'+
     reasonFields(),
-    ()=>{Store.add({type:'sub',applicant:otherTeacher,sameDept:sameDept(SWACTOR,otherTeacher)||sameCurrGroup(SWACTOR,otherTeacher),reason:val('mReason'),writeDate:val('mWrite'),initiator:SWACTOR,
+    ()=>{Store.add({type:'sub',applicant:otherTeacher,sameDept:sameDept(actor,otherTeacher),reason:val('mReason'),writeDate:val('mWrite'),initiator:actor,
       neisSkip:document.getElementById('mNeisSkip').checked,
       absent:{date:val('mAbs'),grade:c.grade,cls:c.cls,period:p,subject:subjFull(otherTeacher,c)},
-      cover:{teacher:SWACTOR,subject:val('mCoverSubj')},makeup:{date:val('mMk'),period:val('mMkP')}});done()});
+      cover:{teacher:actor,subject:val('mCoverSubj')},makeup:{date:val('mMk'),period:val('mMkP')}});TT_PICK=null;done()});
 }
 
 function showSubPanel(d,p){
@@ -2466,11 +2481,8 @@ function showSubPanel(d,p){
   if(sc.same.length){
     h+='<p><span class="tag" style="background:var(--success);color:#fff">동교과 보강 가능</span></p>'+
       sc.same.map(n=>'<button class="btn sm ghost" style="margin:3px" onclick="confirmSub(\''+n+'\',true,'+d+','+p+')">'+n+'</button>').join('');
-  }else if(sc.group.length){
-    h+='<p><span class="tag" style="background:var(--amber);color:#fff">동교과는 없지만 동교과군 보강 가능</span></p>'+
-      sc.group.map(n=>'<button class="btn sm ghost" style="margin:3px" onclick="confirmSub(\''+n+'\',true,'+d+','+p+')">'+n+'</button>').join('');
   }else{
-    h+='<p class="err">동교과·동교과군 모두 이 시간에 빈 사람이 없습니다.</p>';
+    h+='<p class="err">동교과로 이 시간에 빈 사람이 없습니다.</p>';
   }
   if(!my.elective&&sc.other.length)h+='<details style="margin-top:6px"><summary class="muted" style="cursor:pointer">그 외 보강 가능 ('+sc.other.length+'명)</summary>'+
     sc.other.map(n=>'<button class="btn sm ghost" style="margin:3px" onclick="confirmSub(\''+n+'\',false,'+d+','+p+')">'+n+'</button>').join('')+'</details>';
@@ -2503,7 +2515,7 @@ function doMove(from,to){
     box.innerHTML=h;return;
   }
   h+='<p class="muted" style="margin:10px 0 0">이 이동이 가능한 교사 총 '+res.options.length+'명 — 우선순위 순서로 표시됩니다.</p>';
-  const tierLabel={1:'같은 반('+res.myClass+') 담당 · 같은 요일',2:'같은 반('+res.myClass+') 담당 · 다른 요일',3:'동교과 교사',4:'동교과군 교사'};
+  const tierLabel={1:'같은 반('+res.myClass+') 담당 · 같은 요일',2:'같은 반('+res.myClass+') 담당 · 다른 요일',3:'동교과 교사'};
   let curTier=null;
   res.options.forEach(o=>{
     if(o.tier!==curTier){curTier=o.tier;h+='<div class="tierhead"><span class="n">'+curTier+'</span>'+tierLabel[curTier]+'<span class="d"></span></div>';}
@@ -3037,7 +3049,7 @@ function renderMgr(){
     <div class="field" style="margin-top:8px"><label>교사·과목표 (이름,담당과목,교과)</label>
       <textarea id="mTe" rows="5">${getCfg().te||''}</textarea></div>
     <button class="btn sm ghost" style="margin-top:8px" onclick="mgrSaveData()">저장 후 다시 불러오기</button>
-    <p class="muted" style="margin-top:6px">3번째 칸(교과)은 국어·수학·영어·사회·과학·체육·음악·미술·기술가정·정보·제2외국어·한문·교양 등 — 그 교사의 담당 자격증 교과입니다(동교과 보강 판정에 사용, 지금 어떤 과목을 가르치는지와는 무관). 없으면 "동교과군"(기초/탐구/체육예술/생활교양)으로 자동 확장해서 찾습니다. Apps Script 연동을 쓸 때도 이 칸에 입력해두세요 (교체일지 정식 과목명 출력용).</p>
+    <p class="muted" style="margin-top:6px">3번째 칸(교과)은 국어·수학·영어·사회·과학·체육·음악·미술·기술가정·정보·제2외국어·한문·교양 등 — 그 교사의 담당 자격증 교과입니다(동교과 보강 판정에 사용, 지금 어떤 과목을 가르치는지와는 무관). Apps Script 연동을 쓸 때도 이 칸에 입력해두세요 (교체일지 정식 과목명 출력용).</p>
   </div>
 
   <div class="sec">
