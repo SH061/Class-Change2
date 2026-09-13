@@ -205,7 +205,7 @@ td.progressable:hover{outline:2px solid var(--primary-active);outline-offset:-2p
 
 .dcDateField{font-family:inherit;font-size:18px;font-weight:700;color:var(--ink);padding:9px 16px;border:1.5px solid var(--hairline);border-radius:8px;background:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .dcDateField:hover{border-color:var(--primary)}
-.dcPicker{position:fixed;z-index:600;width:300px;background:#fff;border:1px solid var(--hairline);border-radius:12px;padding:14px 16px;box-shadow:0 10px 28px rgba(20,20,19,.18)}
+.dcPicker{position:fixed;z-index:600;width:360px;background:#fff;border:1px solid var(--hairline);border-radius:12px;padding:14px 20px;box-shadow:0 10px 28px rgba(20,20,19,.18)}
 .dcClearBtn{display:block;width:100%;margin-top:8px;padding:8px;border:1px solid var(--hairline);border-radius:8px;background:var(--soft);color:var(--muted);font-family:inherit;font-size:13px;cursor:pointer}
 .dcClearBtn:hover{background:var(--cream-strong)}
 .dcPickerHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:18px;font-weight:800;color:var(--ink)}
@@ -2101,7 +2101,7 @@ function openDatePicker(valueId,labelId,emptyText,onPick){
     // 화면 밖으로 밀려나 잘려 보이는 원인이 됨). 화면 오른쪽/아래로 넘치면 반대쪽으로 붙여서
     // 항상 화면 안에 온전히 보이게 함.
     const r=btn.getBoundingClientRect();
-    const pw=picker.offsetWidth||300,ph=picker.offsetHeight||360;
+    const pw=picker.offsetWidth||360,ph=picker.offsetHeight||360;
     let top=r.bottom+4,left=r.left;
     if(left+pw>window.innerWidth-8)left=Math.max(8,window.innerWidth-8-pw);
     if(top+ph>window.innerHeight-8)top=Math.max(8,r.top-4-ph);
