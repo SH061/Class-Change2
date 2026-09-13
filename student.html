@@ -1471,7 +1471,8 @@ async function fetchAppsScript(url){
     sbGetTimetableRows(),sbGetAcademic(),sbGetNotices(),sbGetTeachersText(),sbGetSwaps(),sbGetCoteachPairs(),sbGetCoteachSwaps()
   ]);
   const homerooms=(cfg['담임명단']||'').split(',').map(s=>s.trim()).filter(Boolean);
-  const weeks=Number(cfg['표시주수'])||null;
+  // 학생용 화면은 교사용과 다른 값을 쓸 수 있게 "학생표시주수"를 따로 둠(비어 있으면 교사용 표시주수를 그대로 씀).
+  const weeks=Number(cfg['학생표시주수'])||Number(cfg['표시주수'])||null;
   const schoolCode=cfg['학교코드']||'12345';
   const progressAllow=(cfg['진도표접근허용']||'').split(',').map(s=>s.trim()).filter(Boolean);
   return{rows,academic,notices,homerooms,teachers,weeks,swaps,schoolCode,progressAllow,coteachPairs,coteachSwaps};
