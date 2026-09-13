@@ -964,10 +964,10 @@ function isHomeroom(){
   if(tier==='special')return isHomeroomName();
   return false;
 }
-// canEditSchoolNotice: "학교안내"만큼은 특정코드만 있으면(담임 지정 여부 무관) 수정 가능하게 하는 완화된 권한.
+// canEditSchoolNotice: "학교안내"는 마스터/특정/학교안내코드 중 아무거나(이름 무관) 있으면 수정 가능.
 function canEditSchoolNotice(){
   const tier=lsGet(LS.codeTier);
-  return tier==='master'||tier==='special';
+  return tier==='master'||tier==='special'||tier==='notice';
 }
 // 안내 카테고리(cat: 'school'|'grade')별 수정 가능 여부 — 학년안내는 항상 isHomeroom() 전체 잠금해제가 있어야 하고,
 // 학교안내는 그보다 완화되어 특정코드만 있어도 됨.
@@ -1402,7 +1402,7 @@ function boot(){
     buildModel(j.rows,j.teachers||c.te);applyRemoteSync(j);
     SCHOOL_CODES=(j.schoolCode||'12345').split(',').map(s=>s.trim()).filter(Boolean);PROGRESS_ALLOW_LIST=j.progressAllow||[];
     COTEACH_PAIRS=j.coteachPairs||[];COTEACH_SWAPS=j.coteachSwaps||[];
-    SPECIAL_CODES=j.specialCodes||[];MASTER_CODES=j.masterCodes||[];
+    SPECIAL_CODES=j.specialCodes||[];MASTER_CODES=j.masterCodes||[];NOTICE_CODES=j.noticeCodes||[];
     afterLoad();
   }).catch(showErr);
 }
@@ -1410,7 +1410,7 @@ function getCfg(){try{return JSON.parse(lsGet(LS.cfg))||{}}catch(e){return{}}}
 function setCfg(c){lsSet(LS.cfg,JSON.stringify(c))}
 async function fetchCSVUrl(url){const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);return parseCSV(await r.text())}
 let ACTIVE_APPS_URL=null,REMOTE_HOMEROOMS=[];
-let SCHOOL_CODES=['12345'],PROGRESS_ALLOW_LIST=[],PROGRESS_ALLOWED=false,SPECIAL_CODES=[],MASTER_CODES=[];
+let SCHOOL_CODES=['12345'],PROGRESS_ALLOW_LIST=[],PROGRESS_ALLOWED=false,SPECIAL_CODES=[],MASTER_CODES=[],NOTICE_CODES=[];
 async function sbGetConfig(){
   const{data,error}=await sb.from('config').select('key,value');
   if(error)throw error;
@@ -1504,7 +1504,8 @@ async function fetchAppsScript(url){
   const progressAllow=(cfg['진도표접근허용']||'').split(',').map(s=>s.trim()).filter(Boolean);
   const specialCodes=(cfg['담임코드']||'').split(',').map(s=>s.trim()).filter(Boolean);
   const masterCodes=(cfg['마스터코드']||'').split(',').map(s=>s.trim()).filter(Boolean);
-  return{rows,academic,notices,homerooms,teachers,weeks,swaps,schoolCode,progressAllow,coteachPairs,coteachSwaps,specialCodes,masterCodes};
+  const noticeCodes=(cfg['학교안내코드']||'').split(',').map(s=>s.trim()).filter(Boolean);
+  return{rows,academic,notices,homerooms,teachers,weeks,swaps,schoolCode,progressAllow,coteachPairs,coteachSwaps,specialCodes,masterCodes,noticeCodes};
 }
 // 앱스크립트에서 받아온 학사일정/안내/담임명단을 이 브라우저의 화면에도 그대로 반영(단방향: 시트→화면).
 // 학사일정·안내는 1학년 담임이 addCal()/addNotice()로 등록하면 시트에 저장되고, 그 결과가 다시 여기로 돌아와 반영됨.
@@ -1615,14 +1616,16 @@ function renderCodeGate(){
     '<div id="codeErr" class="err" style="margin-top:8px"></div>'+
     '<div style="margin-top:21px"><button class="btn" style="font-size:22px;padding:17px 36px" onclick="submitSchoolCode()">확인</button></div>';
 }
-// 겉보기엔 그냥 "학교 코드" 한 칸이지만, 실제로는 세 종류의 코드를 구분해서 받는다(사용자에게는 티 안 나게):
-// 마스터코드(모든 기능 제한 없음) > 특정코드(담임 지정 수정용, 여러 개 가능) > 기본코드(그냥 로그인용, 여러 개 가능).
+// 겉보기엔 그냥 "학교 코드" 한 칸이지만, 실제로는 네 종류의 코드를 구분해서 받는다(사용자에게는 티 안 나게):
+// 마스터코드(모든 기능 제한 없음) > 특정코드(담임 지정 이름과 결합해 학년까지 열어줌, 여러 개) >
+// 학교안내코드(이름 무관하게 학교 안내만 열어줌, 여러 개) > 기본코드(그냥 로그인용, 여러 개).
 // 어떤 코드로 들어왔는지는 CODE_TIER로 남겨 이후 isHomeroom()/canEditSchoolNotice() 판단에 씀.
 function submitSchoolCode(){
   const v=(document.getElementById('schoolCodeInput').value||'').trim();
   let tier=null;
   if(v&&MASTER_CODES.includes(v))tier='master';
   else if(v&&SPECIAL_CODES.includes(v))tier='special';
+  else if(v&&NOTICE_CODES.includes(v))tier='notice';
   else if(v&&SCHOOL_CODES.includes(v))tier='basic';
   if(tier){lsSet(LS.code,'1');lsSet(LS.codeTier,tier);proceedAfterCode()}
   else document.getElementById('codeErr').textContent='코드가 올바르지 않습니다.';
