@@ -930,7 +930,7 @@ function isManager(){const m=(getForm().managers||'').split(/[,\s]+/).filter(Boo
 // (여기에 더해 "수업계 담당자" 이름도 등록해두면 그 이름으로 로그인한 사람만 실제로 수정할 수 있습니다)
 function mgrAccessOK(){return new URLSearchParams(location.search).get('mgr')==='1'}
 // 1학년 담임 여부 — [수업계] 탭에서 이름을 등록해두면 그 사람만 "학교 및 학년 안내"에 새 글을 추가할 수 있음
-function isHomeroom(){const m=(getForm().homerooms||'').split(/[,\s]+/).filter(Boolean);return m.includes(ME)||REMOTE_HOMEROOMS.includes(ME)}
+function isHomeroom(){return false} // 학생용 화면: 학사일정/안내 추가·수정 권한은 항상 끔
 
 /* ===== CSV ===== */
 function parseCSV(t){const rows=[];let row=[],cur='',q=false;for(let i=0;i<t.length;i++){const c=t[i];
@@ -1278,6 +1278,8 @@ function normAc(a){
   return a;
 }
 function getAcademic(){try{return (JSON.parse(lsGet(LS.academic))||[]).map(normAc)}catch(e){return[]}}
+// 학생용 달력에만 쓰는 목록 — "학생에게 제공X"로 표시한 일정은 빼고 보여줌(시간표 자체에 반영되는 로직에는 영향 없음)
+function getAcademicPublic(){return getAcademic().filter(e=>!e.hideFromStudent)}
 function setAcademic(a){lsSet(LS.academic,JSON.stringify(a))}
 function acForRange(isoDate){return getAcademic().filter(x=>isoDate>=x.date&&isoDate<=x.end)}
 // 시간표 렌더링(ttTable 등)이 기대하는 옛 계약({type,last}|null)은 그대로 유지 — 휴업/휴일은 종일 차단, 단축은 지정 교시 이후만 차단
@@ -1398,7 +1400,7 @@ async function sbGetAcademic(){
   if(error)throw error;
   return(data||[]).map(r=>({id:r.id,date:r.date,end:r.end_date||r.date,type:r.type||'휴업일',
     last:r.last_period||undefined,title:r.title||'',grades:r.grades||[],noClass:!!r.no_class,
-    body:r.body||'',periods:r.periods||[]}));
+    body:r.body||'',periods:r.periods||[],hideFromStudent:!!r.hide_from_student}));
 }
 async function sbGetNotices(){
   const{data,error}=await sb.from('notices').select('*').order('created_at',{ascending:false});
@@ -1651,6 +1653,8 @@ function renderPbar(){
       const f=new Date(x.mon);f.setDate(f.getDate()+4);
       return `<option value="${i}" ${i===SELWEEK?'selected':''}>${md(x.mon)}~${md(f)}${i===0?' (이번주)':''}</option>`}).join('')}</select>
     <span class="muted pbar-hint">지난 주는 표시되지 않습니다</span>
+    <span style="flex:1"></span>
+    <button class="btn ghost sm" onclick="openCalModal()">📅 학사일정</button>
   </div>`;
   document.getElementById('pbarTT').innerHTML=h;document.getElementById('pbarSW').innerHTML=h;
   const pcls=document.getElementById('pbarClsTT');if(pcls)pcls.innerHTML=h;
@@ -1930,7 +1934,7 @@ function renderCalModal(){
   const startWeekday=first.getDay();
   const cells=[];for(let i=0;i<startWeekday;i++)cells.push(null);for(let d=1;d<=daysInMonth;d++)cells.push(d);
   while(cells.length%7)cells.push(null);
-  const all=getAcademic();
+  const all=getAcademicPublic();
   let html='<table class="calGridTable"><thead><tr>'+['일','월','화','수','목','금','토'].map(w=>'<th>'+w+'</th>').join('')+'</tr></thead><tbody>';
   for(let r=0;r<cells.length/7;r++){
     html+='<tr>';
@@ -1952,7 +1956,7 @@ function renderCalModal(){
 }
 let CAL_EDIT_ID=null;
 function showCalDetail(i){
-  const e=getAcademic()[i];if(!e)return;
+  const e=getAcademicPublic()[i];if(!e)return;
   document.getElementById('calDetail').innerHTML=
     '<h4>'+fmtAcRange(e)+' · <span class="tag" style="background:'+AC_CATCOLOR[e.type]+'">'+e.type+'</span> '+(e.title||'')+acGradeBadge(e)+
     (e.noClass?' <span class="muted" style="font-size:11px">· 수업 없음</span>':'')+

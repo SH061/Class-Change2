@@ -763,6 +763,9 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
           <label style="display:flex;gap:6px;align-items:center;margin-top:6px;font-size:12.5px;color:var(--muted)">
             <input type="checkbox" id="calNoClass" style="width:auto"> 이 날은 정상 수업이 없음(수업교체 대상에서 자동 제외)
           </label>
+          <label style="display:flex;gap:6px;align-items:center;margin-top:6px;font-size:12.5px;color:var(--muted)">
+            <input type="checkbox" id="calHideStudent" style="width:auto"> 학생에게 제공X (학생용 반별 시간표 화면의 학사일정에는 표시 안 함)
+          </label>
           <textarea id="calBody" placeholder="내용 (선택 — 안 써도 됨)" style="margin-top:8px"></textarea>
           <div class="row" style="margin-top:8px;gap:8px">
             <button class="btn sm" id="calSubmitBtn" onclick="addCal()">등록</button>
@@ -1398,7 +1401,7 @@ async function sbGetAcademic(){
   if(error)throw error;
   return(data||[]).map(r=>({id:r.id,date:r.date,end:r.end_date||r.date,type:r.type||'휴업일',
     last:r.last_period||undefined,title:r.title||'',grades:r.grades||[],noClass:!!r.no_class,
-    body:r.body||'',periods:r.periods||[]}));
+    body:r.body||'',periods:r.periods||[],hideFromStudent:!!r.hide_from_student}));
 }
 async function sbGetNotices(){
   const{data,error}=await sb.from('notices').select('*').order('created_at',{ascending:false});
@@ -1504,13 +1507,13 @@ async function postAppsScript(url,body){
       const e=body.entry||{};const id='a'+Date.now();
       const{error}=await sb.from('academic_events').insert({id,date:e.date,end_date:e.end||e.date,
         type:e.type||'휴업일',last_period:e.last||null,title:e.title||'',grades:e.grades||[],
-        no_class:!!e.noClass,body:e.body||'',periods:e.periods||[]});
+        no_class:!!e.noClass,body:e.body||'',periods:e.periods||[],hide_from_student:!!e.hideFromStudent});
       if(error)return{error:error.message};
     }else if(body.action==='updateAcademic'){
       const e=body.entry||{};
       const{error}=await sb.from('academic_events').update({date:e.date,end_date:e.end||e.date,
         type:e.type||'휴업일',last_period:e.last||null,title:e.title||'',grades:e.grades||[],
-        no_class:!!e.noClass,body:e.body||'',periods:e.periods||[]}).eq('id',body.id);
+        no_class:!!e.noClass,body:e.body||'',periods:e.periods||[],hide_from_student:!!e.hideFromStudent}).eq('id',body.id);
       if(error)return{error:error.message};
     }else if(body.action==='deleteAcademic'){
       const{error}=await sb.from('academic_events').delete().eq('id',body.id);
@@ -1940,7 +1943,7 @@ function renderCalModal(){
       const isoD=CAL_Y+'-'+String(CAL_M).padStart(2,'0')+'-'+String(d).padStart(2,'0');
       const evts=[];all.forEach((e,i)=>{if(isoD>=e.date&&isoD<=e.end)evts.push({e,i})});
       html+='<td'+(isHomeroom()?' class="calAddCell" onclick="startCalAddForDate(\''+isoD+'\')"':'')+'><span class="daynum">'+d+'</span>'+
-        evts.map(x=>'<span class="evt" style="background:'+AC_CATCOLOR[x.e.type]+'" onclick="event.stopPropagation();showCalDetail('+x.i+')">'+(x.e.title||x.e.type)+'</span>').join('')+
+        evts.map(x=>'<span class="evt" style="background:'+AC_CATCOLOR[x.e.type]+'" onclick="event.stopPropagation();showCalDetail('+x.i+')">'+(x.e.hideFromStudent?'🔒 ':'')+(x.e.title||x.e.type)+'</span>').join('')+
         '</td>';
     }
     html+='</tr>';
@@ -1955,6 +1958,7 @@ function showCalDetail(i){
   const e=getAcademic()[i];if(!e)return;
   document.getElementById('calDetail').innerHTML=
     '<h4>'+fmtAcRange(e)+' · <span class="tag" style="background:'+AC_CATCOLOR[e.type]+'">'+e.type+'</span> '+(e.title||'')+acGradeBadge(e)+
+    (e.hideFromStudent?' <span class="muted" style="font-size:11px">· 🔒 학생에게 제공X</span>':'')+
     (e.noClass?' <span class="muted" style="font-size:11px">· 수업 없음</span>':'')+
     (e.periods&&e.periods.length?' <span class="muted" style="font-size:11px">· '+e.periods.join(',')+'교시 수업 불가</span>':'')+'</h4>'+
     (e.body?'<div class="body">'+e.body+'</div>':'<p class="muted" style="margin:4px 0 0">등록된 세부 내용이 없습니다.</p>')+
@@ -1973,6 +1977,7 @@ function startCalEdit(i){
   document.getElementById('calTitle').value=e.title||'';
   [1,2,3].forEach(g=>document.getElementById('calG'+g).checked=(e.grades||[]).includes(g));
   document.getElementById('calNoClass').checked=!!e.noClass;
+  document.getElementById('calHideStudent').checked=!!e.hideFromStudent;
   document.getElementById('calBody').value=e.body||'';
   document.getElementById('calFormHint').textContent='✎ 학사일정 수정 중 (1학년 담임 전용)';
   document.getElementById('calSubmitBtn').textContent='수정 저장';
@@ -1999,7 +2004,7 @@ function startCalAddForDate(isoD){
 function resetCalForm(){
   setDateField('calStart','calStartLabel','','시작일');setDateField('calEnd','calEndLabel','','종료일(같으면 비워둠)');
   document.getElementById('calLast').value='';document.getElementById('calPeriods').value='';document.getElementById('calTitle').value='';document.getElementById('calBody').value='';
-  document.getElementById('calNoClass').checked=false;[1,2,3].forEach(g=>document.getElementById('calG'+g).checked=false);
+  document.getElementById('calNoClass').checked=false;document.getElementById('calHideStudent').checked=false;[1,2,3].forEach(g=>document.getElementById('calG'+g).checked=false);
 }
 // addNotice와 같은 이유로 낙관적 업데이트: 먼저 이 화면에 반영하고, 서버 저장은 뒤에서 진행.
 async function addCal(){
@@ -2010,7 +2015,7 @@ async function addCal(){
   const grades=[1,2,3].filter(g=>document.getElementById('calG'+g).checked);
   const periods=val('calPeriods').split(',').map(x=>+x.trim()).filter(Boolean);
   const entry={date,end,type:val('calCategory'),last:+val('calLast')||undefined,title,grades,periods,
-    noClass:document.getElementById('calNoClass').checked,body:val('calBody').trim()};
+    noClass:document.getElementById('calNoClass').checked,hideFromStudent:document.getElementById('calHideStudent').checked,body:val('calBody').trim()};
   const editing=!!CAL_EDIT_ID,editId=CAL_EDIT_ID;
   const before=getAcademic();
   const a=getAcademic();
