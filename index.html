@@ -1949,15 +1949,19 @@ function renderNoticeSummary(){
       (list.length?list.slice(0,3).map((n,i)=>'<div class="noticeTitle"><span class="num">'+(i+1)+'</span>'+n.title+'</div>').join('')
         :'<p class="muted" style="margin:4px 0">전달사항이 없습니다.</p>')+'</div>';
   };
-  el.innerHTML=group('school','학교')+group('grade','학년');
+  // 학년안내는 지정된 1학년 담임 선생님만 볼 필요가 있어서(불필요한 공유 방지), 그 외 교사에게는
+  // 요약 카드에서부터 아예 안 보이게 함(학교안내만 표시).
+  el.innerHTML=group('school','학교')+(isHomeroom()?group('grade','학년'):'');
 }
-function openNoticeModal(){renderNoticeModalList();document.getElementById('noticeModal').classList.add('on')}
+function openNoticeModal(){if(!isHomeroom()&&NOTICE_CAT==='grade')NOTICE_CAT='school';renderNoticeModalList();document.getElementById('noticeModal').classList.add('on')}
 function closeNoticeModal(){document.getElementById('noticeModal').classList.remove('on')}
 let NOTICE_CAT='school',NOTICE_SUBTAB='pending',NOTICE_OPEN=new Set();
-function switchNoticeCat(cat){NOTICE_CAT=cat;cancelNoticeEdit();renderNoticeModalList()}
+function switchNoticeCat(cat){if(cat==='grade'&&!isHomeroom())return;NOTICE_CAT=cat;cancelNoticeEdit();renderNoticeModalList()}
 function switchNoticeSubtab(sub){NOTICE_SUBTAB=sub;renderNoticeModalList()}
 function toggleNoticeOpen(id){if(NOTICE_OPEN.has(id))NOTICE_OPEN.delete(id);else NOTICE_OPEN.add(id);renderNoticeModalList()}
 function renderNoticeModalList(){
+  document.getElementById('noticeCatTab-grade').hidden=!isHomeroom();
+  if(!isHomeroom()&&NOTICE_CAT==='grade')NOTICE_CAT='school';
   document.getElementById('noticeCatTab-school').classList.toggle('on',NOTICE_CAT==='school');
   document.getElementById('noticeCatTab-grade').classList.toggle('on',NOTICE_CAT==='grade');
   document.getElementById('noticeSubTab-pending').classList.toggle('on',NOTICE_SUBTAB==='pending');
@@ -2755,11 +2759,22 @@ function checkTodayNotice(){
 let JILJI_SEL=null,JILJI_START=null,JILJI_END=null;
 function jiljiMine(){
   const who=SWACTOR||ME;
+  const all=Store.all();
   // 내가 신청한 것뿐 아니라, 내가 시작한(initiator) 맞교체·연쇄이동은 관련된 다른 선생님 몫도 함께 뽑을 수 있어야 함.
   // 다만 같은 교체를 양쪽에서 두 번 기록해둔 것(primary:false는 반대편 사본)은 내 쪽에서 중복으로 세지 않음.
   // 내가 다른 선생님 결강 시간에 대신 보강을 들어간 경우(cover.teacher===나)도, 내가 나중에 내 이름으로
   // 서류를 뽑아 제출/보관하고 싶을 수 있어서 목록에 함께 포함시킴 (인쇄 시 "교사" 란도 내 이름으로 나감).
-  return Store.all().filter(x=>x.applicant===who||(x.initiator===who&&x.primary!==false)||(x.cover&&x.cover.teacher===who));
+  // 다만 "맞교체"에서 나와 상대가 서로의 결강을 서로 메꿔준 경우(같은 grp 안에 내가 신청자인 기록도
+  // 함께 있는 경우)는 결국 같은 교체 건이므로, 내가 보강 들어간 쪽까지 따로 또 보여주지 않음.
+  const mySwapGrps=new Set(all.filter(x=>x.applicant===who&&x.grp).map(x=>x.grp));
+  return all.filter(x=>{
+    if(x.applicant===who||(x.initiator===who&&x.primary!==false))return true;
+    if(x.cover&&x.cover.teacher===who){
+      if(x.type==='swap'&&x.grp&&mySwapGrps.has(x.grp))return false;
+      return true;
+    }
+    return false;
+  });
 }
 function renderJilji(){
   const who=SWACTOR||ME;
