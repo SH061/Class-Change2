@@ -2313,7 +2313,7 @@ function allClasses(){
 function classScheduleLive(gradeCls){
   const cells=[[],[],[],[],[]];for(let d=0;d<5;d++)for(const p of PERIODS)cells[d][p]=null;
   for(const t of M.teachers)for(let d=0;d<5;d++)for(const p of PERIODS){
-    const c=t.cells[d][p];
+    const c=coteachCellOf(t.name,d,p); // 동교과 자체 교체(예: 공통국어1 차민주/김소라)가 있으면 그 결과로 반영
     if(c&&!c.block&&(c.grade+'-'+c.cls)===gradeCls)cells[d][p]={teacher:t.name,subject:subjFull(t.name,c)};
   }
   for(const r of Store.all()){
