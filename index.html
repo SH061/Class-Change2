@@ -95,6 +95,8 @@ table.tt td.mk-fill{background:var(--mint)}
 table.tt td.mk-fill .cl{color:var(--ink)}
 table.tt td.mk-neis{background:var(--sand)}
 table.tt td.mk-neis .cl{color:var(--ink)}
+table.tt td.mk-subfill{background:#f9dbe6}
+table.tt td.mk-subfill .cl{color:var(--ink)}
 table.tt td.mk-coteach{background:#e3d9f7}
 table.tt td.mk-coteach .cl{color:var(--ink)}
 table.tt td.holiday{background:repeating-linear-gradient(45deg,#f0ede6,#f0ede6 6px,#e7e2d8 6px,#e7e2d8 12px);color:var(--muted-soft)}
@@ -658,8 +660,9 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
           </div>
           <div class="card" id="ttWrap"></div>
           <div class="legend">
-            <span><i style="background:var(--yellow)"></i>다른 교시로 이동함(결강)</span>
-            <span><i style="background:var(--mint)"></i>이동해 온 수업 / 보강</span>
+            <span><i style="background:var(--yellow)"></i>수업 변경 전(결강)</span>
+            <span><i style="background:var(--mint)"></i>수업 변경 후(맞교체로 옮겨옴)</span>
+            <span><i style="background:#f9dbe6"></i>동교과 보강</span>
             <span><i style="background:var(--sand)"></i>나이스 미반영(시수 보충용)</span>
             <span><i style="background:#e3d9f7"></i>동일 교과 교사끼리 자체 교체</span>
             <span><i style="background:#e7e2d8"></i>휴업일·단축</span>
@@ -857,6 +860,13 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
       <div id="pbarAllTT"></div>
       <h2 style="font-size:22px;font-weight:800;text-align:center;margin-bottom:12px">전체교사 시간표</h2>
       <div class="card" id="allTTWrap2"></div>
+      <div class="legend">
+        <span><i style="background:var(--yellow)"></i>수업 변경 전(결강)</span>
+        <span><i style="background:var(--mint)"></i>수업 변경 후(맞교체로 옮겨옴)</span>
+        <span><i style="background:#f9dbe6"></i>동교과 보강</span>
+        <span><i style="background:var(--sand)"></i>나이스 미반영(시수 보충용)</span>
+        <span><i style="background:#e3d9f7"></i>동일 교과 교사끼리 자체 교체</span>
+      </div>
     </section>
 
     <!-- ===== 반별 시간표 ===== -->
@@ -1661,7 +1671,7 @@ function changeMarks(name){
       if(r.type==='swap'&&mk&&mk.date){const mi=dIdx(mk.date);if(mi>=0)push(mi+'-'+mk.period,{k:'fill'});}
     }
     if(cv&&cv.teacher===name){
-      const di=dIdx(a.date);if(di>=0)push(di+'-'+a.period,{k:'fill',neisSkip:!!r.neisSkip});
+      const di=dIdx(a.date);if(di>=0)push(di+'-'+a.period,{k:'fill',neisSkip:!!r.neisSkip,subType:r.type});
       if(r.type==='swap'&&mk&&mk.date){const mi=dIdx(mk.date);if(mi>=0)push(mi+'-'+mk.period,{k:'vac'});}
     }
   }
@@ -1704,6 +1714,7 @@ function ttTable(name,opts){
       if(c&&c.coteach)cls.push('mk-coteach');
       if(k)cls.push('mk-'+k.k);
       if(k&&k.k==='fill'&&k.neisSkip)cls.push('mk-neis');
+      else if(k&&k.k==='fill'&&k.subType==='sub')cls.push('mk-subfill');
       if(opts.sel&&opts.sel.d===d&&opts.sel.p===p)cls.push('picked');
       if(opts.selectable&&c&&!c.block)cls.push('selm');
       if(c){if(c.block)inner='<span class="blk">'+c.label+'</span>';
@@ -2275,6 +2286,9 @@ function fullSchoolTable(){
       const rawC=effectiveCell(t.name,d,p);const k=marks[d+'-'+p];
       let c=rawC;if(k&&k.k==='vac')c=null;else if(k&&k.k==='fill'&&k.cell)c=k.cell;
       let cls='slot';if(k)cls+=' mk-'+k.k;
+      if(k&&k.k==='fill'&&k.neisSkip)cls+=' mk-neis';
+      else if(k&&k.k==='fill'&&k.subType==='sub')cls+=' mk-subfill';
+      if(c&&c.coteach)cls+=' mk-coteach';
       const gc=c&&c.grade&&c.cls?(c.grade+'-'+c.cls):null;
       if(ALLTT_HILITE&&gc===ALLTT_HILITE)cls+=' hit';
       let inner='';
