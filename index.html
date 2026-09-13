@@ -478,6 +478,7 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
   #ttWrap table.tt td .cl{font-size:19px}
   #ttWrap table.tt td .sub{font-size:11px}
   #ttWrap table.tt td .elec{font-size:10.5px}
+  #ttWrap table.tt td .blk{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 
   /* 반별 시간표: 선택창 하나 + 표만, 한 화면에 꽉 차게 */
   #clsTTWrap2,#clsTTWrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -530,6 +531,7 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
   #ttWrap table.tt td .cl{font-size:13px}
   #ttWrap table.tt td .sub{font-size:7.5px}
   #ttWrap table.tt td .elec{font-size:7px}
+  #ttWrap table.tt td .blk{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 
   table.tt.clsTT{min-width:0}
   table.tt.clsTT col.phead{width:44px}
@@ -1308,10 +1310,14 @@ function getAcademic(){try{return (JSON.parse(lsGet(LS.academic))||[]).map(normA
 function setAcademic(a){lsSet(LS.academic,JSON.stringify(a))}
 function acForRange(isoDate){return getAcademic().filter(x=>isoDate>=x.date&&isoDate<=x.end)}
 // 시간표 렌더링(ttTable 등)이 기대하는 옛 계약({type,last}|null)은 그대로 유지 — 휴업/휴일은 종일 차단, 단축은 지정 교시 이후만 차단
-// grade를 넘기면 그 학년이 대상인(또는 전체 학년 대상인) 일정만 반영 — 안 넘기면(학년을 모르는 빈 칸 등)
-// 전체 학년 대상 일정만 반영. 예: "1차 지필고사"가 2학년만 대상이면 1학년 교사의 그날 수업엔 영향 없음.
+// grade(단일 값 또는 배열)를 넘기면 그 학년(들) 중 하나라도 대상인(또는 전체 학년 대상인) 일정만
+// 반영 — 안 넘기면(학년을 모르는 빈 칸 등) 전체 학년 대상 일정만 반영. 예: "1차 지필고사"가 2학년만
+// 대상이면 1학년 교사의 그날 수업엔 영향 없음. 배열을 넘기는 건 "그 교사가 그날 맡는 학년 전부" 중
+// 하나라도 걸리면 그날 전체(빈 시간 포함)를 막기 위함 — 교시 하나씩 따로 판정하면 마침 수업이 없는
+// 교시만 안 막혀서 하루 안에 막힌 칸/안 막힌 칸이 섞여 보이는 문제가 있었음.
 function acFor(isoDate,grade){
-  const hits=acForRange(isoDate).filter(x=>!x.grades||!x.grades.length||(grade&&x.grades.includes(+grade)));
+  const grades=Array.isArray(grade)?grade.filter(Boolean):[grade].filter(Boolean);
+  const hits=acForRange(isoDate).filter(x=>!x.grades||!x.grades.length||grades.some(g=>x.grades.includes(+g)));
   const full=hits.find(x=>x.noClass);
   if(full)return{type:full.title||full.type,last:0};
   const short=hits.find(x=>x.type==='단축');
@@ -1731,6 +1737,14 @@ function changeMarks(name){
 function lbl(mk){if(!mk||!mk.date)return'';return md(dparse(mk.date))+' '+mk.period+'교시'}
 function ttTable(name,opts){
   opts=opts||{};const t=M.byName[name];const mk=opts.marks||(opts.self?changeMarks(name):{});
+  // 하루 전체를 막는 학사일정 판정에 쓸 그날의 학년들을 요일별로 한 번만 계산(이 교사가 그날 맡는
+  // 학년 전부) — 교시 하나의 학년만 보면 마침 그 교시에 수업이 없는 칸은 안 막혀서 하루 안에서
+  // 막힌 칸/안 막힌 칸이 뒤섞여 보이므로, 하루 단위로 통일해서 판정함.
+  const dayGrades=[0,1,2,3,4].map(d=>{
+    const set=new Set();
+    for(const p of PERIODS){const raw=opts.effective?effectiveCell(name,d,p):t.cells[d][p];if(raw&&raw.grade)set.add(raw.grade);}
+    return[...set];
+  });
   let h='<table class="tt"><colgroup><col class="phead">'+DAYNAMES.map(()=>'<col>').join('')+'</colgroup><thead><tr><th><span class="pnum">교시</span></th>'+
     DAYNAMES.map((d,i)=>'<th><span class="pnum">'+d+'('+md(dayDate(i))+')</span></th>').join('')+'</tr></thead><tbody>';
   for(const p of PERIODS){
@@ -1738,7 +1752,7 @@ function ttTable(name,opts){
     for(let d=0;d<5;d++){
       const cls=['slot'];let inner='';
       const rawC0=opts.effective?effectiveCell(name,d,p):t.cells[d][p];
-      const blk=dayBlocked(d,rawC0&&rawC0.grade);
+      const blk=dayBlocked(d,dayGrades[d]);
       if(blk&&(blk.type!=='단축'||p>(blk.last||7))){
         h+='<td class="slot holiday"><span class="blk">'+(blk.type==='단축'?'단축':blk.type)+'</span></td>';continue;}
       const pblk=acPeriodBlocks(iso(dayDate(d)),rawC0&&rawC0.grade)[p];
@@ -1785,7 +1799,17 @@ function ttTable(name,opts){
   }
   return h+'</tbody></table>';
 }
-function renderTimetable(){document.getElementById('ttWrap').innerHTML=ttTable(ME,{self:true,effective:true,progress:PROGRESS_ALLOWED});renderTTSidebar()}
+function renderTimetable(){const w=document.getElementById('ttWrap');w.innerHTML=ttTable(ME,{self:true,effective:true,progress:PROGRESS_ALLOWED});fitTtCellText(w);renderTTSidebar()}
+// 모바일에서 요일 칸이 좁아 "1차 지필고사"처럼 긴 학사일정 제목이 줄바꿈되어 칸이 늘어나는 대신,
+// clsTT와 같은 방식으로 한 줄에 들어올 때까지 글자를 줄임.
+function fitTtCellText(container){
+  if(!window.matchMedia('(max-width:600px)').matches)return;
+  container.querySelectorAll('table.tt td .blk').forEach(el=>{
+    el.style.fontSize='';
+    let size=parseFloat(getComputedStyle(el).fontSize),guard=0;
+    while(el.scrollWidth>el.clientWidth+0.5&&size>6.5&&guard<12){size-=0.5;el.style.fontSize=size+'px';guard++}
+  });
+}
 // "빈 시간에 다른 수업 받아오기"는 [수업교체/보강] 탭에서만 쓰는 기능 — 내 시간표에서는 쓰지 않음.
 function volunteerCandidates(actor,d,p){
   const candidates=[];
