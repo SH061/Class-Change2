@@ -205,7 +205,9 @@ td.progressable:hover{outline:2px solid var(--primary-active);outline-offset:-2p
 
 .dcDateField{font-family:inherit;font-size:18px;font-weight:700;color:var(--ink);padding:9px 16px;border:1.5px solid var(--hairline);border-radius:8px;background:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .dcDateField:hover{border-color:var(--primary)}
-.dcPicker{margin:14px auto 0;max-width:360px;background:#fff;border:1px solid var(--hairline);border-radius:12px;padding:14px 16px;box-shadow:0 4px 16px rgba(20,20,19,.08)}
+.dcPicker{position:fixed;z-index:600;width:300px;background:#fff;border:1px solid var(--hairline);border-radius:12px;padding:14px 16px;box-shadow:0 10px 28px rgba(20,20,19,.18)}
+.dcClearBtn{display:block;width:100%;margin-top:8px;padding:8px;border:1px solid var(--hairline);border-radius:8px;background:var(--soft);color:var(--muted);font-family:inherit;font-size:13px;cursor:pointer}
+.dcClearBtn:hover{background:var(--cream-strong)}
 .dcPickerHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:18px;font-weight:800;color:var(--ink)}
 .dcPickerHead button{border:0;background:var(--soft);border-radius:8px;width:32px;height:32px;font-size:18px;font-weight:800;cursor:pointer;color:var(--ink)}
 .dcPickerHead button:hover{background:var(--cream-strong)}
@@ -289,7 +291,6 @@ table.edu td.miss{color:var(--error);font-weight:700}
 
 /* 일지 선택 */
 .jsel{border:1px solid var(--hairline);border-radius:var(--r-md);padding:8px 11px;background:var(--canvas);display:flex;align-items:center;gap:9px;font-size:12px}
-.jsel+.jsel{margin-top:6px}
 .jsel input{width:auto}
 
 /* compare table */
@@ -725,16 +726,12 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
         <h2 class="dcTitle" style="text-align:center;font-size:32.5px;font-weight:800">수업일수 확인</h2>
         <p class="muted dcIntro" style="margin:0 0 14px;text-align:center;word-break:keep-all">기간을 정하면 그 사이 학사일정(휴업일·휴일·단축수업)을 반영해서 제 수업이 실제로 몇 번 열리는지 계산합니다.</p>
         <div style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap">
-          <button type="button" class="dcDateField" onclick="openDatePicker('start')">📅 <span id="dcStartLabel"></span></button>
+          <button type="button" class="dcDateField" data-datefield="eduFrom" onclick="openDatePicker('eduFrom','dcStartLabel')">📅 <span id="dcStartLabel"></span></button>
           <span class="muted">~</span>
-          <button type="button" class="dcDateField" onclick="openDatePicker('end')">📅 <span id="dcEndLabel"></span></button>
+          <button type="button" class="dcDateField" data-datefield="eduTo" onclick="openDatePicker('eduTo','dcEndLabel')">📅 <span id="dcEndLabel"></span></button>
           <input type="date" id="eduFrom" hidden><input type="date" id="eduTo" hidden>
           <span class="dcBreak"></span>
           <button class="btn sm dcCalcBtn" onclick="renderEduDays()">계산하기</button>
-        </div>
-        <div id="dcPicker" class="dcPicker" hidden>
-          <div class="dcPickerHead"><button type="button" onclick="dcPickerNav(-1)">‹</button><span id="dcPickerTitle"></span><button type="button" onclick="dcPickerNav(1)">›</button></div>
-          <div id="dcPickerGrid"></div>
         </div>
         <div id="eduWrap" style="margin-top:18px"></div>
       </div>
@@ -758,9 +755,11 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
         <div id="calDetail" class="calDetailBox" hidden></div>
         <div class="addForm" id="calAddForm" hidden>
           <div class="hint" id="calFormHint">+ 새 학사일정 추가 (1학년 담임 전용)</div>
-          <div style="display:flex;gap:6px">
-            <input id="calStart" type="date" style="flex:1">
-            <input id="calEnd" type="date" style="flex:1" placeholder="종료일(같으면 비워둠)">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <button type="button" class="dcDateField" data-datefield="calStart" onclick="openDatePicker('calStart','calStartLabel')" style="flex:1;justify-content:center">📅 <span id="calStartLabel">시작일</span></button>
+            <span class="muted">~</span>
+            <button type="button" class="dcDateField" data-datefield="calEnd" onclick="openDatePicker('calEnd','calEndLabel','종료일(같으면 비워둠)')" style="flex:1;justify-content:center">📅 <span id="calEndLabel">종료일(같으면 비워둠)</span></button>
+            <input id="calStart" type="hidden"><input id="calEnd" type="hidden">
           </div>
           <select id="calCategory" style="margin-top:8px"></select>
           <input id="calLast" type="number" min="1" max="7" placeholder="단축수업이면 마지막 교시(예: 4)" style="margin-top:8px">
@@ -881,6 +880,12 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
       <div class="card" id="clsTTWrap2"></div>
     </section>
   </main>
+</div>
+
+<!-- 날짜 선택 팝업(달력) — 수업일수 확인/학사일정/수업교체일지 기간 선택 등 여러 곳에서 공용으로 씀 -->
+<div id="dcPicker" class="dcPicker" hidden>
+  <div class="dcPickerHead"><button type="button" onclick="dcPickerNav(-1)">‹</button><span id="dcPickerTitle"></span><button type="button" onclick="dcPickerNav(1)">›</button></div>
+  <div id="dcPickerGrid"></div>
 </div>
 
 <div id="modal" hidden><div class="card">
@@ -1873,8 +1878,8 @@ function showCalDetail(i){
 function startCalEdit(i){
   const e=getAcademic()[i];if(!e||!isHomeroom())return;
   CAL_EDIT_ID=e.id||null;
-  val('calStart')!==undefined&&(document.getElementById('calStart').value=e.date);
-  document.getElementById('calEnd').value=(e.end&&e.end!==e.date)?e.end:'';
+  setDateField('calStart','calStartLabel',e.date,'시작일');
+  setDateField('calEnd','calEndLabel',(e.end&&e.end!==e.date)?e.end:'','종료일(같으면 비워둠)');
   document.getElementById('calCategory').value=e.type;
   document.getElementById('calLast').value=e.last||'';
   document.getElementById('calPeriods').value=(e.periods||[]).join(',');
@@ -1900,12 +1905,12 @@ function startCalAddForDate(isoD){
   cancelCalEdit();
   document.getElementById('calDetail').hidden=true; // 이전에 클릭했던 다른 날짜의 상세 내용이 남아있지 않게 함
   document.getElementById('calAddForm').hidden=false;
-  document.getElementById('calStart').value=isoD;
+  setDateField('calStart','calStartLabel',isoD,'시작일');
   document.getElementById('calAddForm').scrollIntoView({block:'nearest'});
   document.getElementById('calTitle').focus();
 }
 function resetCalForm(){
-  document.getElementById('calStart').value='';document.getElementById('calEnd').value='';
+  setDateField('calStart','calStartLabel','','시작일');setDateField('calEnd','calEndLabel','','종료일(같으면 비워둠)');
   document.getElementById('calLast').value='';document.getElementById('calPeriods').value='';document.getElementById('calTitle').value='';document.getElementById('calBody').value='';
   document.getElementById('calNoClass').checked=false;[1,2,3].forEach(g=>document.getElementById('calG'+g).checked=false);
 }
@@ -2068,25 +2073,30 @@ async function toggleNoticeDone(id,done){
 }
 
 /* --- 수업일수 확인: 자체 달력 팝업으로 날짜 선택 --- */
-let DC_TARGET='start';
+// 날짜 선택 팝업 — 원래 "수업일수 확인"에서만 쓰던 걸 학사일정/수업교체일지 기간 선택에도
+// 함께 쓸 수 있도록 대상 필드(값 넣을 input id, 화면에 보일 label span id)를 받는 범용 버전으로 바꿈.
+let DC_TARGET={valueId:'eduFrom',labelId:'dcStartLabel',emptyText:''};
 function openDaysModal(){
   const d=eduDefaultRange();
   const fromEl=document.getElementById('eduFrom'),toEl=document.getElementById('eduTo');
   if(!fromEl.value)fromEl.value=d.start;
   if(!toEl.value)toEl.value=d.end;
-  document.getElementById('dcStartLabel').textContent=fromEl.value;
-  document.getElementById('dcEndLabel').textContent=toEl.value;
+  document.getElementById('dcStartLabel').textContent=dotFull(dparse(fromEl.value));
+  document.getElementById('dcEndLabel').textContent=dotFull(dparse(toEl.value));
   document.getElementById('daysModal').classList.add('on');
   renderEduDays();
 }
 function closeDaysModal(){document.getElementById('daysModal').classList.remove('on');closeDatePicker()}
-function openDatePicker(target){
+function openDatePicker(valueId,labelId,emptyText,onPick){
   const picker=document.getElementById('dcPicker');
-  if(!picker.hidden&&DC_TARGET===target){closeDatePicker();return}
-  DC_TARGET=target;
-  const cur=(target==='start'?document.getElementById('eduFrom'):document.getElementById('eduTo')).value||iso(new Date());
+  if(!picker.hidden&&DC_TARGET.valueId===valueId){closeDatePicker();return}
+  DC_TARGET={valueId,labelId,emptyText:emptyText||'',onPick};
+  const cur=document.getElementById(valueId).value||iso(new Date());
   const[y,m]=cur.split('-');CAL_PICK_Y=+y;CAL_PICK_M=+m;
-  renderDCPicker();picker.hidden=false;
+  renderDCPicker();
+  const btn=document.querySelector('[data-datefield="'+valueId+'"]');
+  if(btn){const r=btn.getBoundingClientRect();picker.style.top=(r.bottom+window.scrollY+4)+'px';picker.style.left=(r.left+window.scrollX)+'px';}
+  picker.hidden=false;
   document.addEventListener('click',dcOutsideClick,true);
 }
 function closeDatePicker(){document.getElementById('dcPicker').hidden=true;document.removeEventListener('click',dcOutsideClick,true)}
@@ -2105,7 +2115,7 @@ function renderDCPicker(){
   const startWeekday=first.getDay();
   const cells=[];for(let i=0;i<startWeekday;i++)cells.push(null);for(let d=1;d<=daysInMonth;d++)cells.push(d);
   while(cells.length%7)cells.push(null);
-  const curVal=(DC_TARGET==='start'?document.getElementById('eduFrom'):document.getElementById('eduTo')).value;
+  const curVal=document.getElementById(DC_TARGET.valueId).value;
   let html='<table class="dcPickerTable"><thead><tr>'+['일','월','화','수','목','금','토'].map(w=>'<th>'+w+'</th>').join('')+'</tr></thead><tbody>';
   for(let r=0;r<cells.length/7;r++){
     html+='<tr>';
@@ -2118,13 +2128,18 @@ function renderDCPicker(){
     html+='</tr>';
   }
   html+='</tbody></table>';
+  if(DC_TARGET.emptyText)html+='<button type="button" class="dcClearBtn" onclick="pickDCDate(\'\')">비우기</button>';
   document.getElementById('dcPickerGrid').innerHTML=html;
 }
 function pickDCDate(isoD){
-  const el=document.getElementById(DC_TARGET==='start'?'eduFrom':'eduTo');
-  el.value=isoD;
-  document.getElementById(DC_TARGET==='start'?'dcStartLabel':'dcEndLabel').textContent=isoD;
+  setDateField(DC_TARGET.valueId,DC_TARGET.labelId,isoD,DC_TARGET.emptyText);
   closeDatePicker();
+  if(DC_TARGET.onPick)DC_TARGET.onPick(isoD);
+}
+// 날짜 필드(hidden input)와 화면에 보이는 버튼 라벨을 함께 갱신 — 달력 클릭/직접 세팅 어디서든 이걸로 통일
+function setDateField(valueId,labelId,isoD,emptyText){
+  const el=document.getElementById(valueId);if(el)el.value=isoD||'';
+  const lb=document.getElementById(labelId);if(lb)lb.textContent=isoD?dotFull(dparse(isoD)):(emptyText||'');
 }
 
 /* ===== 공개 화면: 전체교사 시간표 / 반별 시간표 ===== */
@@ -2840,22 +2855,25 @@ function renderJiljiSelector(mine){
   const dayed=(JILJI_START&&JILJI_END)?mine.filter(x=>x.absent.date&&x.absent.date>=JILJI_START&&x.absent.date<=JILJI_END)
     .sort((a,b)=>(a.absent.date||'').localeCompare(b.absent.date||'')):[];
   const who=SWACTOR||ME;
-  el.innerHTML='<div class="card noprint" style="margin-bottom:14px"><h3 style="font-size:13px;margin-bottom:8px">인쇄할 건 선택 ('+JILJI_SEL.size+' / '+mine.length+')</h3>'+
-    '<div class="field"><label>기간 선택</label>'+
-    '<div style="display:flex;gap:6px;align-items:center;max-width:360px">'+
-    '<input id="jiljiStart" type="date" style="flex:1" value="'+(JILJI_START||'')+'" onchange="setJiljiRange()">'+
+  el.innerHTML='<div class="card noprint" style="margin-bottom:14px">'+
+    '<div style="display:flex;flex-direction:column;gap:10px">'+
+    '<h3 style="font-size:16.9px;margin:0">인쇄할 건 선택 ('+JILJI_SEL.size+' / '+mine.length+')</h3>'+
+    '<div class="field"><label style="font-size:18.2px;font-weight:700">기간 선택</label>'+
+    '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+
+    '<button type="button" class="dcDateField" data-datefield="jiljiStart" onclick="openDatePicker(\'jiljiStart\',\'jiljiStartLabel\',\'시작일\',setJiljiRange)">📅 <span id="jiljiStartLabel">'+(JILJI_START?dotFull(dparse(JILJI_START)):'시작일')+'</span></button>'+
     '<span class="muted">~</span>'+
-    '<input id="jiljiEnd" type="date" style="flex:1" value="'+(JILJI_END||'')+'" onchange="setJiljiRange()">'+
+    '<button type="button" class="dcDateField" data-datefield="jiljiEnd" onclick="openDatePicker(\'jiljiEnd\',\'jiljiEndLabel\',\'종료일\',setJiljiRange)">📅 <span id="jiljiEndLabel">'+(JILJI_END?dotFull(dparse(JILJI_END)):'종료일')+'</span></button>'+
+    '<input id="jiljiStart" type="hidden" value="'+(JILJI_START||'')+'"><input id="jiljiEnd" type="hidden" value="'+(JILJI_END||'')+'">'+
     '</div></div>'+
     ((JILJI_START&&JILJI_END)?
       (dayed.length?dayed.map(r=>{const a=r.absent;
         return '<label class="jsel"><input type="checkbox" '+(JILJI_SEL.has(r.id)?'checked':'')+' onchange="toggleJiljiSel(\''+r.id+'\',this.checked)">'+
           (r.applicant!==who?'<b>'+r.applicant+'</b> · ':'')+
           (a.date?dotShort(dparse(a.date)):'')+' '+a.grade+'-'+a.cls+' '+a.period+'교시 '+a.subject+' — '+(r.type==='swap'?'맞교체':'보강')+' · '+r.cover.teacher+'</label>';
-      }).join(''):'<p class="muted" style="margin-top:8px">이 기간에는 교체·보강 건이 없습니다.</p>')+
-      '<div class="row" style="margin-top:8px"><button class="btn sm ghost" onclick="jiljiSelAll(true)">이 기간 전체 선택</button><button class="btn sm ghost" onclick="jiljiSelAll(false)">이 기간 전체 해제</button></div>'
-      :'<p class="muted" style="margin-top:8px">시작일과 종료일을 고르면 그 기간의 교체·보강 건이 여기 나옵니다.</p>')+
-    '</div>';
+      }).join(''):'<p class="muted">이 기간에는 교체·보강 건이 없습니다.</p>')+
+      '<div class="row"><button class="btn sm ghost" onclick="jiljiSelAll(true)">이 기간 전체 선택</button><button class="btn sm ghost" onclick="jiljiSelAll(false)">이 기간 전체 해제</button></div>'
+      :'<p class="muted">시작일과 종료일을 고르면 그 기간의 교체·보강 건이 여기 나옵니다.</p>')+
+    '</div></div>';
 }
 function setJiljiRange(){JILJI_START=val('jiljiStart')||null;JILJI_END=val('jiljiEnd')||null;renderJilji()}
 function toggleJiljiSel(id,on){if(!JILJI_SEL)JILJI_SEL=new Set();if(on)JILJI_SEL.add(id);else JILJI_SEL.delete(id);renderJilji()}
