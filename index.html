@@ -95,6 +95,8 @@ table.tt td.mk-fill{background:var(--mint)}
 table.tt td.mk-fill .cl{color:var(--ink)}
 table.tt td.mk-neis{background:var(--sand)}
 table.tt td.mk-neis .cl{color:var(--ink)}
+table.tt td.mk-coteach{background:#e3d9f7}
+table.tt td.mk-coteach .cl{color:var(--ink)}
 table.tt td.holiday{background:repeating-linear-gradient(45deg,#f0ede6,#f0ede6 6px,#e7e2d8 6px,#e7e2d8 12px);color:var(--muted-soft)}
 table.tt td .chg{display:block;font-size:9px;font-weight:700;margin-top:2px}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
@@ -659,6 +661,7 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
             <span><i style="background:var(--yellow)"></i>다른 교시로 이동함(결강)</span>
             <span><i style="background:var(--mint)"></i>이동해 온 수업 / 보강</span>
             <span><i style="background:var(--sand)"></i>나이스 미반영(시수 보충용)</span>
+            <span><i style="background:#e3d9f7"></i>동일 교과 교사끼리 자체 교체</span>
             <span><i style="background:#e7e2d8"></i>휴업일·단축</span>
             <span><i style="background:#e6e1f4"></i>선택과목(맞교체 불가, 동교과 보강만 가능)</span>
           </div>
@@ -798,8 +801,11 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
     <div class="noticeModal" id="progModal" onclick="if(event.target===this)closeProgModal()">
       <div class="sheet" style="position:relative;max-width:640px">
         <button class="x" onclick="closeProgModal()">✕</button>
-        <h2>&lt;<select id="progClsSel" onchange="switchProgClass(this.value)" style="font-size:inherit;font-weight:inherit;border:0;background:none;padding:0"></select>반 <span id="progSubj"></span> 진도표&gt;</h2>
-        <div class="progAddRow">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-right:28px">
+          <h2 style="margin:0">&lt;<select id="progClsSel" onchange="switchProgClass(this.value)" style="font-size:inherit;font-weight:inherit;border:0;background:none;padding:0"></select>반 <span id="progSubj"></span> 진도표&gt;</h2>
+          <button id="coteachBtn" class="btn sm ghost" style="display:none" onclick="doCoteachSwap()"></button>
+        </div>
+        <div class="progAddRow" id="progAddRow">
           <input id="progDate" type="date">
           <input id="progPeriod" type="number" min="1" max="7" style="width:64px" placeholder="교시" readonly>
           <textarea id="progBody" placeholder="이 날짜·교시에 나간 진도/특이사항"></textarea>
@@ -1041,6 +1047,27 @@ function effectiveCell(name,d,p){
   }
   if(fill)return fill;
   if(vac)return null;
+  return coteachCellOf(name,d,p);
+}
+// ── 동일 교과 담당 교사끼리 자체적으로 반을 맞바꿔 들어가는 경우(예: 공통국어1 차민주/김소라) ──
+// 정식 수업교체와 달리 날짜가 아니라 "요일+교시"라는 매주 반복되는 자리 자체를 맞바꾸는 것이라
+// Store(수업교체 기록)와는 별도로 관리하고, 수업교체일지에도 올라가지 않음. 색깔도 다르게(연보라) 표시.
+let COTEACH_PAIRS=[],COTEACH_SWAPS=[];
+function coteachPartnerFor(subject,teacher){
+  if(!subject)return null;
+  for(const p of COTEACH_PAIRS){
+    if(p.subject!==subject)continue;
+    if(p.teacher_a===teacher)return p.teacher_b;
+    if(p.teacher_b===teacher)return p.teacher_a;
+  }
+  return null;
+}
+function coteachCellOf(name,d,p){
+  const hit=COTEACH_SWAPS.filter(r=>r.day===d&&r.period===p);
+  const gained=hit.find(r=>r.to_teacher===name);
+  if(gained)return{grade:gained.grade,cls:gained.cls,subj:gained.subject,label:gained.grade+'-'+gained.cls,elective:false,block:false,coteach:true};
+  const given=hit.find(r=>r.from_teacher===name);
+  if(given)return null;
   return cellOf(name,d,p);
 }
 function isFreeEff(n,d,p){const c=effectiveCell(n,d,p);return !c||c.block}
@@ -1332,6 +1359,7 @@ function boot(){
   fetchAppsScript(appsUrl).then(j=>{
     buildModel(j.rows,j.teachers||c.te);applyRemoteSync(j);
     SCHOOL_CODES=(j.schoolCode||'12345').split(',').map(s=>s.trim()).filter(Boolean);PROGRESS_ALLOW_LIST=j.progressAllow||[];
+    COTEACH_PAIRS=j.coteachPairs||[];COTEACH_SWAPS=j.coteachSwaps||[];
     afterLoad();
   }).catch(showErr);
 }
@@ -1387,6 +1415,24 @@ async function sbGetSwaps(){
   if(scope.length)list=list.filter(r=>scope.includes(r.applicant));
   return list;
 }
+async function sbGetCoteachPairs(){
+  const{data,error}=await sb.from('coteach_pairs').select('*');
+  if(error)throw error;
+  return data||[];
+}
+async function sbGetCoteachSwaps(){
+  const{data,error}=await sb.from('coteach_swaps').select('*');
+  if(error)throw error;
+  return(data||[]).map(r=>({id:r.id,grp:r.grp,day:r.day,period:r.period,grade:r.grade,cls:r.cls,subject:r.subject,from_teacher:r.from_teacher,to_teacher:r.to_teacher}));
+}
+async function sbAddCoteachSwapRows(rows){
+  const{error}=await sb.from('coteach_swaps').insert(rows);
+  if(error)throw error;
+}
+async function sbDeleteCoteachSwapGroup(grp){
+  const{error}=await sb.from('coteach_swaps').delete().eq('grp',grp);
+  if(error)throw error;
+}
 async function sbGetProgress(grade,cls,subject){
   const{data,error}=await sb.from('progress_log').select('*')
     .eq('grade',grade).eq('cls',cls).eq('subject',subject).order('date',{ascending:false}).order('period',{ascending:false});
@@ -1406,14 +1452,14 @@ async function sbSaveProgress(entry){
 }
 async function fetchAppsScript(url){
   const cfg=await sbGetConfig();
-  const[rows,academic,notices,teachers,swaps]=await Promise.all([
-    sbGetTimetableRows(),sbGetAcademic(),sbGetNotices(),sbGetTeachersText(),sbGetSwaps()
+  const[rows,academic,notices,teachers,swaps,coteachPairs,coteachSwaps]=await Promise.all([
+    sbGetTimetableRows(),sbGetAcademic(),sbGetNotices(),sbGetTeachersText(),sbGetSwaps(),sbGetCoteachPairs(),sbGetCoteachSwaps()
   ]);
   const homerooms=(cfg['담임명단']||'').split(',').map(s=>s.trim()).filter(Boolean);
   const weeks=Number(cfg['표시주수'])||null;
   const schoolCode=cfg['학교코드']||'12345';
   const progressAllow=(cfg['진도표접근허용']||'').split(',').map(s=>s.trim()).filter(Boolean);
-  return{rows,academic,notices,homerooms,teachers,weeks,swaps,schoolCode,progressAllow};
+  return{rows,academic,notices,homerooms,teachers,weeks,swaps,schoolCode,progressAllow,coteachPairs,coteachSwaps};
 }
 // 앱스크립트에서 받아온 학사일정/안내/담임명단을 이 브라우저의 화면에도 그대로 반영(단방향: 시트→화면).
 // 학사일정·안내는 1학년 담임이 addCal()/addNotice()로 등록하면 시트에 저장되고, 그 결과가 다시 여기로 돌아와 반영됨.
@@ -1653,6 +1699,7 @@ function ttTable(name,opts){
       else if(k&&k.k==='fill'&&k.cell)c=k.cell;
       if(c&&!c.block)cls.push('has');else if(!c)cls.push('empty');
       if(c&&c.elective)cls.push('elective');
+      if(c&&c.coteach)cls.push('mk-coteach');
       if(k)cls.push('mk-'+k.k);
       if(k&&k.k==='fill'&&k.neisSkip)cls.push('mk-neis');
       if(opts.sel&&opts.sel.d===d&&opts.sel.p===p)cls.push('picked');
@@ -1665,7 +1712,7 @@ function ttTable(name,opts){
       if(opts.selectable){
         if(c&&!c.block)attr=' draggable="true" ondragstart="dragStart(event,'+d+','+p+')" onclick="slotClick('+d+','+p+')"';
         else if(!c)attr=' ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropOn(event,'+d+','+p+')" onclick="emptyClick('+d+','+p+')"';
-      }else if(opts.progress&&c&&!c.block&&c.grade&&c.cls){
+      }else if(opts.self&&c&&!c.block&&c.grade&&c.cls&&(opts.progress||coteachPartnerFor(subjFull(name,c),name))){
         cls.push('progressable');
         attr=' onclick="openProgModal('+d+','+p+',\''+esc(c.grade)+'\',\''+esc(c.cls)+'\',\''+esc(subjFull(name,c)||c.label)+'\')"';
       }
@@ -1685,14 +1732,14 @@ function myClassOptions(){
   for(let d=0;d<5;d++)for(const p of PERIODS){
     const c=t.cells[d][p];if(!c||c.block||!c.grade||!c.cls)continue;
     const key=c.grade+'-'+c.cls;
-    if(!map.has(key))map.set(key,{grade:c.grade,cls:c.cls,subject:subjFull(ME,c)||c.label});
+    if(!map.has(key))map.set(key,{grade:c.grade,cls:c.cls,subject:subjFull(ME,c)||c.label,d,p});
   }
   return[...map.values()].sort((a,b)=>(a.grade+'-'+a.cls).localeCompare(b.grade+'-'+b.cls,'ko',{numeric:true}));
 }
 let PROG_CUR=null;
 function openProgModal(d,p,grade,cls,subject){
-  if(!PROGRESS_ALLOWED)return;
-  PROG_CUR={grade,cls,subject};
+  if(!PROGRESS_ALLOWED&&!coteachPartnerFor(subject,ME))return;
+  PROG_CUR={grade,cls,subject,d,p};
   const opts=myClassOptions();
   const sel=document.getElementById('progClsSel');
   sel.innerHTML=opts.map(o=>'<option value="'+o.grade+'-'+o.cls+'" '+(o.grade===grade&&o.cls===cls?'selected':'')+'>'+o.grade+'-'+o.cls+'</option>').join('');
@@ -1700,15 +1747,59 @@ function openProgModal(d,p,grade,cls,subject){
   document.getElementById('progDate').value=iso(dayDate(d));
   document.getElementById('progPeriod').value=p;
   document.getElementById('progBody').value='';
-  renderProgList();
+  document.getElementById('progAddRow').style.display=PROGRESS_ALLOWED?'':'none';
+  if(PROGRESS_ALLOWED)renderProgList();else document.getElementById('progList').innerHTML='';
+  renderCoteachBtn();
   document.getElementById('progModal').classList.add('on');
 }
 function closeProgModal(){document.getElementById('progModal').classList.remove('on')}
 function switchProgClass(key){
   const o=myClassOptions().find(x=>(x.grade+'-'+x.cls)===key);if(!o)return;
-  PROG_CUR={grade:o.grade,cls:o.cls,subject:o.subject};
+  PROG_CUR={grade:o.grade,cls:o.cls,subject:o.subject,d:o.d,p:o.p};
   document.getElementById('progSubj').textContent=o.subject;
-  renderProgList();
+  document.getElementById('progDate').value=iso(dayDate(o.d));
+  document.getElementById('progPeriod').value=o.p;
+  if(PROGRESS_ALLOWED)renderProgList();
+  renderCoteachBtn();
+}
+// ── 동일 교과 자체 교체 버튼 ──
+function renderCoteachBtn(){
+  const btn=document.getElementById('coteachBtn');if(!btn)return;
+  const partner=coteachPartnerFor(PROG_CUR.subject,ME);
+  if(!partner){btn.style.display='none';return}
+  const active=COTEACH_SWAPS.find(r=>r.day===PROG_CUR.d&&r.period===PROG_CUR.p&&r.to_teacher===ME);
+  btn.style.display='';
+  btn.textContent=active?'원래대로 되돌리기':(partner+'선생님 교체');
+  btn.dataset.mode=active?'undo':'swap';
+  btn.dataset.grp=active?active.grp:'';
+}
+async function doCoteachSwap(){
+  const btn=document.getElementById('coteachBtn');
+  const partner=coteachPartnerFor(PROG_CUR.subject,ME);
+  if(!partner)return;
+  if(btn.dataset.mode==='undo'){
+    if(!(await appConfirm(partner+' 선생님과의 교체를 되돌릴까요?')))return;
+    try{await sbDeleteCoteachSwapGroup(btn.dataset.grp);COTEACH_SWAPS=await sbGetCoteachSwaps();renderAll();closeProgModal()}
+    catch(e){appAlert('되돌리기 실패: '+e.message)}
+    return;
+  }
+  const d=PROG_CUR.d,p=PROG_CUR.p;
+  const partnerCell=effectiveCell(partner,d,p);
+  const partnerHasClass=partnerCell&&!partnerCell.block&&partnerCell.grade&&partnerCell.cls;
+  const msg=partner+' 선생님과 '+DAYNAMES[d]+' '+p+'교시 반을 서로 바꿀까요?'+
+    (partnerHasClass?'':' ('+partner+' 선생님은 이 시간이 비어 있어 제 반만 넘어갑니다)');
+  if(!(await appConfirm(msg)))return;
+  const grp='ct'+Date.now();
+  const rows=[{id:grp+'a',grp,day:d,period:p,grade:PROG_CUR.grade,cls:PROG_CUR.cls,subject:PROG_CUR.subject,from_teacher:ME,to_teacher:partner}];
+  if(partnerHasClass){
+    rows.push({id:grp+'b',grp,day:d,period:p,grade:partnerCell.grade,cls:partnerCell.cls,subject:subjFull(partner,partnerCell)||partnerCell.label,from_teacher:partner,to_teacher:ME});
+  }
+  try{
+    await sbAddCoteachSwapRows(rows);
+    COTEACH_SWAPS=await sbGetCoteachSwaps();
+    renderAll();
+    closeProgModal();
+  }catch(e){appAlert('교체 실패: '+e.message)}
 }
 async function renderProgList(){
   const box=document.getElementById('progList');box.innerHTML='<p class="muted">불러오는 중…</p>';
