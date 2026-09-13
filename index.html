@@ -10,7 +10,7 @@
 <style>
 :root{
   --primary:#cc785c;--primary-active:#a9583e;--primary-dis:#e6dfd8;
-  --teal:#5db8a6;--amber:#e8a55a;--yellow:#f7dd7a;--mint:#a9e6d8;
+  --teal:#5db8a6;--amber:#e8a55a;--yellow:#f7dd7a;--mint:#a9e6d8;--sand:#ded2bd;
   --canvas:#faf9f5;--soft:#f5f0e8;--card:#efe9de;--cream-strong:#e8e0d2;
   --dark:#181715;--hairline:#e6dfd8;
   --ink:#141413;--body:#3d3d3a;--muted:#6c6a64;--muted-soft:#8e8b82;
@@ -93,6 +93,8 @@ table.tt td .blk{color:var(--muted-soft);font-size:11px}
 table.tt td.mk-vac{background:var(--yellow)}
 table.tt td.mk-fill{background:var(--mint)}
 table.tt td.mk-fill .cl{color:var(--ink)}
+table.tt td.mk-neis{background:var(--sand)}
+table.tt td.mk-neis .cl{color:var(--ink)}
 table.tt td.holiday{background:repeating-linear-gradient(45deg,#f0ede6,#f0ede6 6px,#e7e2d8 6px,#e7e2d8 12px);color:var(--muted-soft)}
 table.tt td .chg{display:block;font-size:9px;font-weight:700;margin-top:2px}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}
@@ -669,6 +671,7 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
           <div class="legend">
             <span><i style="background:var(--yellow)"></i>다른 교시로 이동함(결강)</span>
             <span><i style="background:var(--mint)"></i>이동해 온 수업 / 보강</span>
+            <span><i style="background:var(--sand)"></i>나이스 미반영(시수 보충용)</span>
             <span><i style="background:#e7e2d8"></i>휴업일·휴일·단축</span>
             <span><i style="background:#e6e1f4"></i>선택과목(맞교체 불가, 동교과 보강만 가능)</span>
           </div>
@@ -829,7 +832,7 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
         <h2>&lt;<select id="progClsSel" onchange="switchProgClass(this.value)" style="font-size:inherit;font-weight:inherit;border:0;background:none;padding:0"></select>반 <span id="progSubj"></span> 진도표&gt;</h2>
         <div class="progAddRow">
           <input id="progDate" type="date">
-          <input id="progPeriod" type="number" min="1" max="7" style="width:64px" placeholder="교시">
+          <input id="progPeriod" type="number" min="1" max="7" style="width:64px" placeholder="교시" readonly>
           <textarea id="progBody" placeholder="이 날짜·교시에 나간 진도/특이사항"></textarea>
           <button class="btn sm" onclick="saveProgress()">저장</button>
         </div>
@@ -1094,7 +1097,12 @@ function allSubjects(){
   for(const n in M.info)if(M.info[n].subject)set.add(M.info[n].subject);
   return [...set].sort((a,b)=>a.localeCompare(b,'ko'));
 }
-function subjPickerField(id,label,def){
+function subjPickerField(id,label,def,locked){
+  // locked=true: 보강(sub)은 헷갈리지 않도록 원래 교과로 고정하고 못 바꾸게 함 (맞교체는 해당 없음)
+  if(locked){
+    return '<div class="field"><label>'+label+'</label>'+
+      '<input id="'+id+'" value="'+(def||'').replace(/"/g,'&quot;')+'" readonly style="background:var(--canvas-2,#f0ece4);color:var(--muted)"></div>';
+  }
   return '<div class="field"><label>'+label+'</label>'+
     '<input id="'+id+'" list="subjDatalist" value="'+(def||'').replace(/"/g,'&quot;')+'" placeholder="과목명 선택 또는 입력">'+
     '<datalist id="subjDatalist">'+allSubjects().map(s=>'<option value="'+s.replace(/"/g,'&quot;')+'">').join('')+'</datalist></div>';
@@ -1391,6 +1399,7 @@ async function sbGetSwaps(){
   const scope=await sbGetSwapScope();
   let list=(data||[]).map(r=>({id:r.id,type:r.type,applicant:r.applicant,initiator:r.initiator||'',
     grp:r.grp||undefined,primary:r.is_primary===null?undefined:r.is_primary,sameDept:!!r.same_dept,
+    neisSkip:!!r.neis_skip,
     reason:r.reason||'',writeDate:r.write_date||'',
     absent:{date:r.absent_date,grade:r.absent_grade,cls:r.absent_cls,period:r.absent_period||'',subject:r.absent_subject||''},
     cover:{teacher:r.cover_teacher||'',subject:r.cover_subject||''},
@@ -1403,6 +1412,10 @@ async function sbGetProgress(grade,cls,subject){
     .eq('grade',grade).eq('cls',cls).eq('subject',subject).order('date',{ascending:false}).order('period',{ascending:false});
   if(error)throw error;
   return data||[];
+}
+async function sbDeleteProgress(id){
+  const{error}=await sb.from('progress_log').delete().eq('id',id);
+  if(error)throw error;
 }
 async function sbSaveProgress(entry){
   const{error}=await sb.from('progress_log').upsert({
@@ -1487,7 +1500,7 @@ async function postAppsScript(url,body){
         const rowsToInsert=allowed.map(en=>{
           const a=en.absent||{},c=en.cover||{},mk=en.makeup||{};
           return{id:en.id,type:en.type,applicant:en.applicant,initiator:en.initiator||'',grp:en.grp||null,
-            is_primary:en.primary===undefined?null:!!en.primary,same_dept:!!en.sameDept,reason:en.reason||'',
+            is_primary:en.primary===undefined?null:!!en.primary,same_dept:!!en.sameDept,neis_skip:!!en.neisSkip,reason:en.reason||'',
             write_date:en.writeDate||null,absent_date:a.date||null,absent_grade:a.grade||null,
             absent_cls:a.cls||null,absent_period:a.period||null,absent_subject:a.subject||'',
             cover_teacher:c.teacher||'',cover_subject:c.subject||'',makeup_date:mk.date||null,
@@ -1556,7 +1569,7 @@ function doLogin(){
   if(pl)pl.innerHTML='<div class="card" style="text-align:center;padding:80px 24px"><h2 style="font-size:36px;font-weight:800;margin:0">선생님 로그인 중입니다.</h2></div>';
   setTimeout(enterApp,150);
 }
-function logout(){lsDel(LS.user);location.reload()}
+function logout(){lsDel(LS.user);lsDel(LS.code);lsDel(LS.master);location.reload()}
 function renderBrand(){
   const f=getForm();const el=document.getElementById('brandText');if(!el)return;
   el.innerHTML='<b>'+f.school+'</b> · '+(f.semester||'')+' 수업교체 시스템';
@@ -1624,7 +1637,7 @@ function changeMarks(name){
       if(r.type==='swap'&&mk&&mk.date){const mi=dIdx(mk.date);if(mi>=0)push(mi+'-'+mk.period,{k:'fill'});}
     }
     if(cv&&cv.teacher===name){
-      const di=dIdx(a.date);if(di>=0)push(di+'-'+a.period,{k:'fill'});
+      const di=dIdx(a.date);if(di>=0)push(di+'-'+a.period,{k:'fill',neisSkip:!!r.neisSkip});
       if(r.type==='swap'&&mk&&mk.date){const mi=dIdx(mk.date);if(mi>=0)push(mi+'-'+mk.period,{k:'vac'});}
     }
   }
@@ -1654,6 +1667,7 @@ function ttTable(name,opts){
       if(c&&!c.block)cls.push('has');else if(!c)cls.push('empty');
       if(c&&c.elective)cls.push('elective');
       if(k)cls.push('mk-'+k.k);
+      if(k&&k.k==='fill'&&k.neisSkip)cls.push('mk-neis');
       if(opts.sel&&opts.sel.d===d&&opts.sel.p===p)cls.push('picked');
       if(opts.selectable&&c&&!c.block)cls.push('selm');
       if(c){if(c.block)inner='<span class="blk">'+c.label+'</span>';
@@ -1715,10 +1729,15 @@ async function renderProgList(){
     const rows=await sbGetProgress(PROG_CUR.grade,PROG_CUR.cls,PROG_CUR.subject);
     const today=iso(new Date());
     box.innerHTML=rows.length?rows.map(r=>
-      '<div class="progEntry'+(r.date===today?' today':'')+'"><div class="meta">'+md(dparse(r.date))+' '+r.period+'교시 · '+r.writer+'</div>'+
+      '<div class="progEntry'+(r.date===today?' today':'')+'"><div class="meta">'+md(dparse(r.date))+' '+r.period+'교시 · '+r.writer+
+      ' <button class="btn sm ghost" style="padding:2px 8px;margin-left:6px" onclick="deleteProgressEntry('+r.id+')">삭제</button></div>'+
       '<div class="body">'+esc(r.body||'').replace(/\n/g,'<br>')+'</div></div>'
     ).join(''):'<p class="muted">아직 기록된 진도가 없습니다.</p>';
   }catch(e){box.innerHTML='<p class="err">불러오기 실패: '+e.message+'</p>'}
+}
+async function deleteProgressEntry(id){
+  if(!(await appConfirm('이 진도 기록을 삭제할까요?')))return;
+  try{await sbDeleteProgress(id);renderProgList()}catch(e){appAlert('삭제 실패: '+e.message)}
 }
 async function saveProgress(){
   const date=document.getElementById('progDate').value,period=+document.getElementById('progPeriod').value;
@@ -2299,11 +2318,13 @@ function confirmVolunteer(otherTeacher,d,p){
   openModal('보강 대신 맡기',
     '<p class="muted">'+DAYNAMES[d]+' '+p+'교시 <b>'+c.label+'</b> ('+otherTeacher+' 선생님 수업)을 '+SWACTOR+' 선생님이 대신 맡습니다.</p>'+
     '<div class="field"><label>결강 날짜</label><input id="mAbs" type="date" value="'+iso(dayDate(d))+'"></div>'+
-    subjPickerField('mCoverSubj','보강 교과 (수업시수 보전을 위해 원래 교과로 들어갑니다. 실제로 다른 과목을 가르치면 바꿔주세요)',subjFull(otherTeacher,c))+
+    subjPickerField('mCoverSubj','보강 교과 (수업시수 보전을 위해 원래 교과로 고정됩니다)',subjFull(otherTeacher,c),true)+
     '<div class="field"><label>보강계획 날짜 (되갚는 수업, 없으면 비움)</label><input id="mMk" type="date"></div>'+
     '<div class="field"><label>보강계획 교시</label><input id="mMkP" type="number" min="1" max="7"></div>'+
+    '<label style="display:flex;align-items:center;gap:6px;margin-top:8px"><input type="checkbox" id="mNeisSkip" style="width:auto"> 나이스 미반영 (제가 수업시수가 부족해서 가져오는 것 — 정식 보강 아님)</label>'+
     reasonFields(),
     ()=>{Store.add({type:'sub',applicant:otherTeacher,sameDept:sameDept(SWACTOR,otherTeacher)||sameCurrGroup(SWACTOR,otherTeacher),reason:val('mReason'),writeDate:val('mWrite'),initiator:SWACTOR,
+      neisSkip:document.getElementById('mNeisSkip').checked,
       absent:{date:val('mAbs'),grade:c.grade,cls:c.cls,period:p,subject:subjFull(otherTeacher,c)},
       cover:{teacher:SWACTOR,subject:val('mCoverSubj')},makeup:{date:val('mMk'),period:val('mMkP')}});done()});
 }
@@ -2546,7 +2567,7 @@ function confirmSub(name,same,d,p){
   openModal((same?'동교과 ':'')+'보강 확정',
     '<p class="muted">'+DAYNAMES[d]+' '+p+'교시 <b>'+my.label+'</b> ('+SWACTOR+') 를 '+name+' 선생님이 보강합니다.</p>'+
     '<div class="field"><label>결강 날짜</label><input id="mAbs" type="date" value="'+iso(dayDate(d))+'"></div>'+
-    subjPickerField('mCoverSubj','보강 교과 (수업시수 보전을 위해 원래 교과로 들어갑니다. 실제로 다른 과목을 가르치면 바꿔주세요)',subjFull(SWACTOR,my))+
+    subjPickerField('mCoverSubj','보강 교과 (수업시수 보전을 위해 원래 교과로 고정됩니다)',subjFull(SWACTOR,my),true)+
     '<div class="field"><label>보강계획 날짜 (되갚는 수업, 없으면 비움)</label><input id="mMk" type="date"></div>'+
     '<div class="field"><label>보강계획 교시</label><input id="mMkP" type="number" min="1" max="7"></div>'+
     reasonFields(),
