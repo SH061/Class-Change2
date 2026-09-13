@@ -2113,19 +2113,20 @@ function renderNoticeSummary(){
       (list.length?list.slice(0,3).map((n,i)=>'<div class="noticeTitle"><span class="num">'+(i+1)+'</span>'+n.title+'</div>').join('')
         :'<p class="muted" style="margin:4px 0">전달사항이 없습니다.</p>')+'</div>';
   };
-  // 학년안내는 지정된 1학년 담임 선생님만 볼 필요가 있어서(불필요한 공유 방지), 그 외 교사에게는
-  // 요약 카드에서부터 아예 안 보이게 함(학교안내만 표시).
-  el.innerHTML=group('school','학교')+(isHomeroomName()?group('grade','학년'):'');
+  // 학년안내는 "특정코드로 지정된 1학년 담임 이름으로 로그인"했을 때만(isHomeroom) 볼 필요가 있어서
+  // (불필요한 공유 방지), 그 외에는 요약 카드에서부터 아예 안 보이게 함(학교안내만 표시).
+  // 담임 이름이어도 코드가 안 맞으면(예: 기본코드로 들어온 경우) 여기서 막힘 — 열람도 수정과 같은 기준.
+  el.innerHTML=group('school','학교')+(isHomeroom()?group('grade','학년'):'');
 }
-function openNoticeModal(){if(!isHomeroomName()&&NOTICE_CAT==='grade')NOTICE_CAT='school';renderNoticeModalList();document.getElementById('noticeModal').classList.add('on')}
+function openNoticeModal(){if(!isHomeroom()&&NOTICE_CAT==='grade')NOTICE_CAT='school';renderNoticeModalList();document.getElementById('noticeModal').classList.add('on')}
 function closeNoticeModal(){document.getElementById('noticeModal').classList.remove('on')}
 let NOTICE_CAT='school',NOTICE_SUBTAB='pending',NOTICE_OPEN=new Set();
-function switchNoticeCat(cat){if(cat==='grade'&&!isHomeroomName())return;NOTICE_CAT=cat;cancelNoticeEdit();renderNoticeModalList()}
+function switchNoticeCat(cat){if(cat==='grade'&&!isHomeroom())return;NOTICE_CAT=cat;cancelNoticeEdit();renderNoticeModalList()}
 function switchNoticeSubtab(sub){NOTICE_SUBTAB=sub;renderNoticeModalList()}
 function toggleNoticeOpen(id){if(NOTICE_OPEN.has(id))NOTICE_OPEN.delete(id);else NOTICE_OPEN.add(id);renderNoticeModalList()}
 function renderNoticeModalList(){
-  document.getElementById('noticeCatTab-grade').hidden=!isHomeroomName();
-  if(!isHomeroomName()&&NOTICE_CAT==='grade')NOTICE_CAT='school';
+  document.getElementById('noticeCatTab-grade').hidden=!isHomeroom();
+  if(!isHomeroom()&&NOTICE_CAT==='grade')NOTICE_CAT='school';
   document.getElementById('noticeCatTab-school').classList.toggle('on',NOTICE_CAT==='school');
   document.getElementById('noticeCatTab-grade').classList.toggle('on',NOTICE_CAT==='grade');
   document.getElementById('noticeSubTab-pending').classList.toggle('on',NOTICE_SUBTAB==='pending');
