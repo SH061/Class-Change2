@@ -1663,7 +1663,7 @@ function ttTable(name,opts){
         // 있던 선생님은 그 교시에 감독으로 들어가는 게 보통이라, 그냥 안내문만 띄우면 "내가 감독인지"
         // 헷갈리므로 원래 반을 다른 칸과 똑같이 보여주고 그 아래에 시험명을 함께 적어줌.
         if(rawC0&&!rawC0.block&&rawC0.grade&&rawC0.cls){
-          h+='<td class="slot has examSlot"><span class="cl">'+rawC0.label+'</span><span class="sub">'+pblk+'</span></td>';
+          h+='<td class="slot holiday examSlot"><span class="cl">'+rawC0.label+'</span><span class="sub">'+pblk+'</span></td>';
         }else{
           h+='<td class="slot holiday"><span class="blk">'+pblk+'</span></td>';
         }
@@ -2246,7 +2246,7 @@ function renderClassTTGeneric(selId,wrapId){
       if(pblk){
         // 영어듣기평가 등 이 교시만 수업이 없어지는 경우 — 원래 이 반에 들어오던 선생님이 감독으로
         // 들어가는 게 보통이므로, 과목/선생님을 그대로 보여주고 그 아래에 시험명을 함께 적어줌.
-        if(c&&!c.empty){h+='<td class="slot has examSlot"><span class="cl">'+(c.subject||'')+'</span><span class="sub">'+c.teacher+' · '+pblk+'</span></td>';continue}
+        if(c&&!c.empty){h+='<td class="slot holiday examSlot"><span class="cl">'+(c.subject||'')+'</span><span class="sub">'+c.teacher+' · '+pblk+'</span></td>';continue}
         h+='<td class="slot holiday"><span class="blk">'+pblk+'</span></td>';continue;
       }
       let cls='slot',inner='';
