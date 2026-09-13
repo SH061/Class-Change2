@@ -2342,7 +2342,7 @@ function classScheduleLive(gradeCls){
 function renderClassTTGeneric(selId,wrapId){
   const sel=document.getElementById(selId);if(!sel||!sel.value)return;
   const gradeCls=sel.value;const cells=classScheduleLive(gradeCls);const clsGrade=gradeCls.split('-')[0];
-  let h='<table class="tt clsTT"><colgroup><col class="phead">'+DAYNAMES.map(()=>'<col>').join('')+'</colgroup><thead><tr><th>교시</th>'+
+  let h='<table class="tt clsTT"><colgroup><col class="phead">'+DAYNAMES.map(()=>'<col>').join('')+'</colgroup><thead><tr><th><span style="font-size:26px;font-weight:800">교시</span></th>'+
     DAYNAMES.map((d,i)=>'<th><span style="font-size:26px;font-weight:800;white-space:nowrap">'+md(dayDate(i))+'('+d+')</span></th>').join('')+'</tr></thead><tbody>';
   for(const p of PERIODS){
     h+='<tr><th><span style="font-size:22px;font-weight:800">'+p+'</span><br><span style="font-weight:600;font-size:13px;color:#8e8b82;white-space:nowrap">'+periodTimeLabelShort(p)+'</span></th>';
