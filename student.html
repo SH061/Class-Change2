@@ -2831,19 +2831,20 @@ function renderEduDays(){
   for(let cur=new Date(start);cur<=end;cur.setDate(cur.getDate()+1)){
     const di=(cur.getDay()+6)%7;if(di>4)continue; // 0=월…4=금, 주말 제외
     const isoD=iso(cur);
-    const hits=getAcademic().filter(e=>isoD>=e.date&&isoD<=e.end);
-    const full=hits.find(e=>e.noClass);
+    // "평일 등교일" 자체은 학년 지정 없는(=학교 전체 대상) 일정으로만 판단 — 특정 학년만
+    // 대상인 시험 등은 다른 학년은 정상 등교/수업하므로 등교일 자체를 막으면 안 됨.
+    const wideHits=acForRange(isoD).filter(x=>!x.grades||!x.grades.length);
+    const full=wideHits.find(e=>e.noClass);
     if(full){usedEntries.add(full);continue}
     schoolDays++;weekdayCounts[di]++;
-    const short=hits.find(e=>e.type==='단축');
-    const lastPeriod=short?(short.last||7):7;
-    if(short)usedEntries.add(short);
     for(const p of PERIODS){
-      if(p>lastPeriod)continue;
-      const pBlockEntry=hits.find(e=>(e.periods||[]).includes(p));
-      if(pBlockEntry){usedEntries.add(pBlockEntry);continue}
       const c=t.cells[di][p];
       if(!c||c.block)continue;
+      // 이 시간의 수업이 실제로 막히는지는 그 반의 학년을 대상으로 한 학사일정만 반영
+      // (다른 학년만 대상인 시험/단축 등은 이 학년 수업엔 영향 없음).
+      const pHits=acForRange(isoD).filter(x=>!x.grades||!x.grades.length||(c.grade&&x.grades.includes(+c.grade)));
+      const pBlockEntry=pHits.find(e=>e.noClass||(e.type==='단축'&&p>(e.last||7))||((e.periods||[]).includes(p)));
+      if(pBlockEntry){usedEntries.add(pBlockEntry);continue}
       counts[c.label]=(counts[c.label]||0)+1;
     }
   }
