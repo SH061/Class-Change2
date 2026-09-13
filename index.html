@@ -1424,6 +1424,13 @@ async function sbGetConfig(){
   const map={};(data||[]).forEach(r=>map[r.key]=r.value);
   return map;
 }
+// config는 대부분 관리자가 Supabase 표에서 직접 바꾸지만, "표시 기간(표시주수)"만큼은 수업계 탭에서
+// 바로 저장할 수 있게 예외적으로 앱에서 씀 — 교사·학생 화면 둘 다 이 값을 그대로 읽으므로 한 번
+// 저장하면 양쪽에 동시에 적용됨(로컬 저장과 달리 새로고침해도 유지, 다른 사람 화면에도 반영).
+async function sbSetConfig(key,value){
+  const{error}=await sb.from('config').upsert({key,value:String(value)});
+  if(error)throw error;
+}
 async function sbGetTimetableRows(){
   const{data,error}=await sb.from('timetable').select('rows').order('id',{ascending:false}).limit(1);
   if(error)throw error;
@@ -1737,9 +1744,10 @@ function changeMarks(name){
 function lbl(mk){if(!mk||!mk.date)return'';return md(dparse(mk.date))+' '+mk.period+'교시'}
 function ttTable(name,opts){
   opts=opts||{};const t=M.byName[name];const mk=opts.marks||(opts.self?changeMarks(name):{});
-  // 하루 전체를 막는 학사일정 판정에 쓸 그날의 학년들을 요일별로 한 번만 계산(이 교사가 그날 맡는
-  // 학년 전부) — 교시 하나의 학년만 보면 마침 그 교시에 수업이 없는 칸은 안 막혀서 하루 안에서
-  // 막힌 칸/안 막힌 칸이 뒤섞여 보이므로, 하루 단위로 통일해서 판정함.
+  // 그 교시에 실제로 담당하는 학년을 알면(수업이 있으면) 그 학년만 보고 판정 — 이하나 선생님처럼
+  // 하루에 1학년·2학년을 같이 맡는 경우, 2학년만 시험이면 1학년 수업은 그대로 있어야 하기 때문.
+  // 수업이 없는(빈) 교시만 예외적으로 "이 교사가 그날 맡는 학년 전부"로 판정해서, 하루 종일 시험인
+  // 단일 학년 담당 교사의 빈 교시까지 빠짐없이 학사일정이 반영되게 함.
   const dayGrades=[0,1,2,3,4].map(d=>{
     const set=new Set();
     for(const p of PERIODS){const raw=opts.effective?effectiveCell(name,d,p):t.cells[d][p];if(raw&&raw.grade)set.add(raw.grade);}
@@ -1752,7 +1760,7 @@ function ttTable(name,opts){
     for(let d=0;d<5;d++){
       const cls=['slot'];let inner='';
       const rawC0=opts.effective?effectiveCell(name,d,p):t.cells[d][p];
-      const blk=dayBlocked(d,dayGrades[d]);
+      const blk=dayBlocked(d,(rawC0&&rawC0.grade)?[rawC0.grade]:dayGrades[d]);
       if(blk&&(blk.type!=='단축'||p>(blk.last||7))){
         h+='<td class="slot holiday"><span class="blk">'+(blk.type==='단축'?'단축':blk.type)+'</span></td>';continue;}
       const pblk=acPeriodBlocks(iso(dayDate(d)),rawC0&&rawC0.grade)[p];
@@ -3125,7 +3133,7 @@ function renderMgr(){
     <div class="row">
       <div class="field"><label>이번 주부터 몇 주까지 표시</label>
         <input type="number" id="mWeeks" min="2" max="40" value="${f.weeks}" style="width:90px"></div>
-      <span class="muted">지난 주는 자동으로 숨겨집니다.</span>
+      <span class="muted">지난 주는 자동으로 숨겨집니다. 저장하면 학생용 화면을 포함해 모두에게 똑같이 적용됩니다.</span>
     </div>
     <div class="field" style="margin-top:10px"><label>교시별 시작 시각 (비우면 표시 안 함)</label>
       <div class="row" style="gap:6px">${PERIODS.map(p=>`<span>${p}교시</span><input value="${f.times[p]||''}" id="mT${p}" style="width:74px">`).join('')}</div></div>
@@ -3245,14 +3253,21 @@ function mgrConvertCopy(){
   try{document.execCommand('copy');appAlert('복사되었습니다. 구글시트에 붙여넣기(Ctrl+V) 하세요.')}
   catch(e){appAlert('복사에 실패했습니다. 아래 칸에서 직접 선택해 복사해주세요.')}
 }
-function mgrSaveForm(){
+async function mgrSaveForm(){
   const f=getForm();
   f.school=val('fSchool');f.title=val('fTitle');f.appr1=val('fA1');f.appr2=val('fA2');f.semester=val('fSemester');
   f.jeongyeol=document.getElementById('fJ').checked;
+  const prevWeeks=f.weeks;
   f.weeks=Math.max(2,+val('mWeeks')||10);f.managers=val('fMgr').trim();f.homerooms=val('fHomeroom').trim();
   const times={};PERIODS.forEach(p=>times[p]=val('mT'+p));f.times=times;
   setForm(f);setAcademic(AC.filter(x=>x.date));
-  computeWeeks();renderAll();updatePubTitle();renderBrand();appAlert('저장되었습니다.');
+  computeWeeks();renderAll();updatePubTitle();renderBrand();
+  // 표시주수는 이 브라우저뿐 아니라 모든 교사·학생 화면에 똑같이 적용돼야 하므로 Supabase에도 저장.
+  if(f.weeks!==prevWeeks){
+    try{await sbSetConfig('표시주수',f.weeks)}
+    catch(err){appAlert('표시 기간 서버 저장에 실패했습니다(이 화면에는 반영됨): '+err.message);return}
+  }
+  appAlert('저장되었습니다.');
 }
 
 /* ===== 인쇄 ===== */
