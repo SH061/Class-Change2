@@ -653,15 +653,13 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
         <div>
           <div class="card noprint ttHeaderRow" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
             <h2 style="font-size:25px"><span id="ttWho"></span> 선생님 시간표</h2><span style="flex:1"></span>
-            <button class="btn ghost sm ttExtraBtn" onclick="openChgDetailModal()">변경된 시간표 보기</button>
-            <button class="btn ghost sm ttExtraBtn" onclick="printTimetable()">인쇄 (PDF)</button>
           </div>
           <div class="card" id="ttWrap"></div>
           <div class="legend">
             <span><i style="background:var(--yellow)"></i>다른 교시로 이동함(결강)</span>
             <span><i style="background:var(--mint)"></i>이동해 온 수업 / 보강</span>
             <span><i style="background:var(--sand)"></i>나이스 미반영(시수 보충용)</span>
-            <span><i style="background:#e7e2d8"></i>휴업일·휴일·단축</span>
+            <span><i style="background:#e7e2d8"></i>휴업일·단축</span>
             <span><i style="background:#e6e1f4"></i>선택과목(맞교체 불가, 동교과 보강만 가능)</span>
           </div>
         </div>
@@ -703,28 +701,12 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
       </div>
     </div>
 
-    <!-- ===== 변경된 시간표 상세비교 모달 (기존 목록+상세비교 그대로, "변경된 시간표 보기" 버튼용) ===== -->
-    <div class="noticeModal" id="chgDetailModal" onclick="if(event.target===this)closeChgDetailModal()">
-      <div class="sheet" style="position:relative;width:820px">
-        <button class="x" onclick="closeChgDetailModal()">✕</button>
-        <h2 style="text-align:center">변경된 시간표</h2>
-        <p class="muted" style="margin:0 0 14px;text-align:center">건을 클릭하면 오른쪽/아래에 상대 선생님 시간표와 함께 어떻게 바뀌는지 보여줍니다.</p>
-        <div class="split">
-          <div class="panel">
-            <h3 style="font-size:14px;margin-bottom:8px">변경 내역 (<span id="chgTtCount">0</span>)</h3>
-            <div id="chgTtList"></div>
-          </div>
-          <div class="panel" id="chgTtDetail"><p class="muted">왼쪽에서 변경 건을 선택하세요.</p></div>
-        </div>
-      </div>
-    </div>
-
     <!-- ===== 수업일수 확인 모달 ===== -->
     <div class="noticeModal" id="daysModal" onclick="if(event.target===this)closeDaysModal()">
       <div class="sheet" style="position:relative;width:1040px">
         <button class="x" onclick="closeDaysModal()">✕</button>
         <h2 class="dcTitle" style="text-align:center;font-size:32.5px;font-weight:800">수업일수 확인</h2>
-        <p class="muted dcIntro" style="margin:0 0 14px;text-align:center;word-break:keep-all">기간을 정하면 그 사이 학사일정(휴업일·휴일·단축수업)을 반영해서 제 수업이 실제로 몇 번 열리는지 계산합니다.</p>
+        <p class="muted dcIntro" style="margin:0 0 14px;text-align:center;word-break:keep-all">기간을 정하면 그 사이 학사일정(휴업일·단축수업)을 반영해서 제 수업이 실제로 몇 번 열리는지 계산합니다.</p>
         <div style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap">
           <button type="button" class="dcDateField" data-datefield="eduFrom" onclick="openDatePicker('eduFrom','dcStartLabel')">📅 <span id="dcStartLabel"></span></button>
           <span class="muted">~</span>
@@ -1244,8 +1226,8 @@ function dayDate(i){const d=new Date(weekMon());d.setDate(d.getDate()+i);return 
    기존엔 {date,type,last,memo} 한 줄=하루였는데, 시험/행사/회의처럼 수업을 막지 않는
    일정과 기간(예: 수학여행 3일)도 다루려고 필드를 늘렸습니다. 예전에 저장된 데이터는
    normAc()에서 자동으로 새 필드 기본값을 채워서 그대로 읽힙니다(마이그레이션 불필요). */
-const AC_TYPES=['휴업일','휴일','단축','시험','행사','회의'];
-const AC_CATCOLOR={'휴업일':'#c64545','휴일':'#c64545','단축':'#c64545','시험':'#4a7fc7','행사':'#4d9b6f','회의':'#b08a3e'};
+const AC_TYPES=['휴업일','단축','시험','행사','회의'];
+const AC_CATCOLOR={'휴업일':'#c64545','단축':'#c64545','시험':'#4a7fc7','행사':'#4d9b6f','회의':'#b08a3e'};
 function normAc(a){
   a=Object.assign({},a);
   a.end=a.end||a.date;
@@ -1776,8 +1758,6 @@ function renderChgSummary(){
     return '<div class="chgrow"><span class="dot '+(isApplicant?'out':'in')+'"></span> <b>'+dayLbl+'</b> '+main+'</div>';
   }).join('');
 }
-function openChgDetailModal(){document.getElementById('chgDetailModal').classList.add('on');renderChangedTT()}
-function closeChgDetailModal(){document.getElementById('chgDetailModal').classList.remove('on')}
 function openChgModal(){document.getElementById('ttWho2').textContent=ME;renderChgDetailList();document.getElementById('chgModal').classList.add('on')}
 // 모바일 전용 "더보기" 메뉴 — 이번 주 변경된 수업/학사일정/학교 안내/수업일수 확인을 별도 화면(기존 모달)으로 이동
 function toggleMobileMore(){document.getElementById('mobileMoreMenu').classList.toggle('on')}
@@ -2682,70 +2662,6 @@ async function delChg(id){
 
 /* ===== 변경된 시간표 (목록 + 상대 교사 포함 상세비교) ===== */
 function wd(dateStr){if(!dateStr)return -1;const d=dparse(dateStr);const i=(d.getDay()+6)%7;return i>=0&&i<=4?i:-1}
-let CHGSEL=null;
-function renderChangedTT(){
-  const mine=Store.all().filter(x=>x.applicant===ME||x.cover.teacher===ME)
-    .sort((a,b)=>(b.absent.date||'').localeCompare(a.absent.date||''));
-  document.getElementById('chgTtCount').textContent=mine.length;
-  const listEl=document.getElementById('chgTtList'),detEl=document.getElementById('chgTtDetail');
-  if(!mine.length){listEl.innerHTML='<p class="muted">변경 내역이 없습니다.</p>';detEl.innerHTML='<p class="muted">변경 내역이 없습니다.</p>';return}
-  listEl.innerHTML=mine.map(r=>{
-    const a=r.absent,role=r.applicant===ME?'신청':'보강담당';
-    const partner=r.applicant===ME?r.cover.teacher:r.applicant;
-    return '<div class="chglistrow'+(CHGSEL===r.id?' on':'')+'" onclick="selectChg(\''+r.id+'\')">'+
-      '<b>'+(a.date?dotShort(dparse(a.date)):'')+'</b> '+a.grade+'-'+a.cls+' '+a.period+'교시 '+a.subject+
-      ' <span class="tag">'+(r.type==='swap'?'맞교체':'보강')+'</span> <span class="tag">'+role+'</span>'+
-      '<div class="muted" style="margin-top:3px">상대: '+partner+'</div></div>';
-  }).join('');
-  const sel=mine.find(r=>r.id===CHGSEL);
-  if(sel)renderChgDetail(sel);
-  else{CHGSEL=mine[0].id;renderChgDetail(mine[0])}
-}
-function selectChg(id){CHGSEL=id;renderChangedTT()}
-function renderChgDetail(r){
-  const el=document.getElementById('chgTtDetail');
-  const a=r.absent,mk=r.makeup,P=r.cover.teacher;
-  const fd=wd(a.date),fp=a.period,td=wd(mk.date),tp=mk.period;
-  let h='<div class="row" style="justify-content:space-between;align-items:flex-start">'+
-    '<h3 style="font-size:14px">'+(r.type==='swap'?'맞교체':'보강')+' 상세</h3>'+
-    (r.applicant===ME||r.cover.teacher===ME?'<button class="btn sm ghost" onclick="cancelChg(\''+r.id+'\')">이 변경 취소</button>':'')+'</div>';
-  h+='<div class="swapviz">';
-  h+='<div class="side out"><b>'+ME+' (원래)</b>'+(fd>=0?DAYNAMES[fd]+' ':'')+(a.date?md(dparse(a.date))+' ':'')+a.period+'교시<br>'+a.grade+'-'+a.cls+' '+(a.subject||'')+'</div>';
-  h+='<span class="arrow">→</span>';
-  if(r.type==='swap'&&mk.date){
-    h+='<div class="side in"><b>'+ME+' (변경 후)</b>'+(td>=0?DAYNAMES[td]+' ':'')+md(dparse(mk.date))+' '+tp+'교시로 이동</div>';
-  }else{
-    h+='<div class="side in"><b>'+P+' 선생님이 보강</b>'+(mk.date?(td>=0?DAYNAMES[td]+' ':'')+md(dparse(mk.date))+' '+tp+'교시에 되갚음':'되갚는 보강계획 없음')+'</div>';
-  }
-  h+='</div>';
-  if(r.type==='swap'&&fd>=0&&td>=0){
-    const pcCell=cellOf(P,td,tp);
-    h+='<div class="swapviz">';
-    h+='<div class="side out"><b>'+P+' (원래)</b>'+DAYNAMES[td]+' '+tp+'교시<br>'+(pcCell?pcCell.label+' '+(subjFull(P,pcCell)||''):(r.cover.subject||'-'))+'</div>';
-    h+='<span class="arrow">→</span>';
-    h+='<div class="side in"><b>'+P+' (변경 후)</b>'+DAYNAMES[fd]+' '+fp+'교시로 이동</div>';
-    h+='</div>';
-    h+='<div class="hr"></div><h3 style="font-size:13px;margin-bottom:6px">해당 요일 시간표 비교</h3>';
-    const days=fd===td?[fd]:[fd,td];
-    for(const d of days){
-      h+='<table class="cmp"><colgroup><col class="c0"><col><col></colgroup><thead><tr><th>'+DAYNAMES[d]+'</th><th>'+ME+'</th><th>'+P+'</th></tr></thead><tbody>';
-      for(const p of PERIODS){
-        const mc=cellOf(ME,d,p),pc2=cellOf(P,d,p);
-        let mt=mc?mc.label:'',pt=pc2?pc2.label:'',rc='';
-        if(d===fd&&p===fp){mt='<s>'+a.grade+'-'+a.cls+'</s> → '+DAYNAMES[td]+' '+tp+'교시';pt='＋ (이동해 옴)';rc='hlin'}
-        if(d===td&&p===tp){mt='＋ (이동해 옴)';pt='<s>'+(pcCell?pcCell.label:'')+'</s> → '+DAYNAMES[fd]+' '+fp+'교시';rc='hlout'}
-        h+='<tr class="'+rc+'"><td>'+p+'교시</td><td>'+(mt||'-')+'</td><td>'+(pt||'-')+'</td></tr>';
-      }
-      h+='</tbody></table>';
-    }
-  }
-  h+='<div class="hr"></div><p class="muted">사유: '+(r.reason||'-')+' · 작성일 '+(r.writeDate?dotShort(dparse(r.writeDate)):'-')+'</p>';
-  el.innerHTML=h;
-}
-async function cancelChg(id){
-  if(!(await appConfirm('이 변경을 취소하시겠습니까? 관련된 다른 선생님의 기록도 함께 삭제되어 시간표 표시와 수업교체일지에서 원래대로 되돌아갑니다.')))return;
-  Store.removeGroup(id);CHGSEL=null;renderAll();
-}
 
 /* ===== 수업일수 확인 (학사일정 반영) ===== */
 function eduDefaultRange(){
@@ -3006,7 +2922,7 @@ function renderMgr(){
   </div>
 
   <div class="sec">
-    <h2 class="sechead">학사일정 (휴업일·휴일·단축수업·시험·행사·회의)</h2>
+    <h2 class="sechead">학사일정 (휴업일·단축수업·시험·행사·회의)</h2>
     <p class="muted">"수업 없음"을 체크한 날은 시간표에 반영되고 그 날 수업교체 대상에서 제외됩니다. 시험·행사·회의는 보통 체크 없이 안내용으로만 등록하면 됩니다.</p>
     <table class="grid-ed" id="acTable"></table>
     <button class="btn sm ghost" style="margin-top:8px" onclick="acAddRow()">+ 줄 추가</button>
@@ -3130,7 +3046,6 @@ function mgrSaveForm(){
 }
 
 /* ===== 인쇄 ===== */
-function printTimetable(){document.body.classList.add('print-tt');window.print();setTimeout(()=>document.body.classList.remove('print-tt'),500)}
 function printJilji(){showView('jilji');document.body.classList.add('print-jilji');window.print();setTimeout(()=>document.body.classList.remove('print-jilji'),500)}
 function printAllJilji(){
   const wrap=document.getElementById('jiljiWrap');
