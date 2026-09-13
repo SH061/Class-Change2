@@ -808,7 +808,7 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
         </nav>
         <div id="noticeList"></div>
         <div class="addForm" id="noticeAddForm" hidden>
-          <div class="hint" id="noticeFormHint">+ 새 안내 추가 (1학년 담임 전용)</div>
+          <div class="hint" id="noticeFormHint">+ 새 안내 추가</div>
           <input id="newTitle" placeholder="제목 (목록에는 제목만 보입니다)">
           <input id="newDept" placeholder="관련부서 (예: 교무부)">
           <textarea id="newBody" placeholder="내용"></textarea>
@@ -2155,7 +2155,7 @@ function startNoticeEdit(id){
   document.getElementById('newTitle').value=n.title||'';
   document.getElementById('newDept').value=n.dept||'';
   document.getElementById('newBody').value=n.body||'';
-  document.getElementById('noticeFormHint').textContent='✎ 안내 수정 중 (1학년 담임 전용)';
+  document.getElementById('noticeFormHint').textContent='✎ 안내 수정 중';
   document.getElementById('noticeSubmitBtn').textContent='수정 저장';
   document.getElementById('noticeCancelEditBtn').hidden=false;
   renderNoticeModalList();
@@ -2164,7 +2164,7 @@ function startNoticeEdit(id){
 function cancelNoticeEdit(){
   NOTICE_EDIT_ID=null;
   document.getElementById('newTitle').value='';document.getElementById('newDept').value='';document.getElementById('newBody').value='';
-  document.getElementById('noticeFormHint').textContent='+ 새 안내 추가 (1학년 담임 전용)';
+  document.getElementById('noticeFormHint').textContent='+ 새 안내 추가';
   document.getElementById('noticeSubmitBtn').textContent='등록';
   document.getElementById('noticeCancelEditBtn').hidden=true;
 }
