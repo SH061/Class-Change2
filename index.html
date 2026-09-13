@@ -858,15 +858,18 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
     <!-- ===== 전체 시간표 ===== -->
     <section id="view-allTT" hidden>
       <div id="pbarAllTT"></div>
-      <h2 style="font-size:22px;font-weight:800;text-align:center;margin-bottom:12px">전체교사 시간표</h2>
-      <div class="card" id="allTTWrap2"></div>
-      <div class="legend">
-        <span><i style="background:var(--yellow)"></i>수업 변경 전(결강)</span>
-        <span><i style="background:var(--mint)"></i>수업 변경 후(맞교체로 옮겨옴)</span>
-        <span><i style="background:#f9dbe6"></i>동교과 보강</span>
-        <span><i style="background:var(--sand)"></i>나이스 미반영(시수 보충용)</span>
-        <span><i style="background:#e3d9f7"></i>동일 교과 교사끼리 자체 교체</span>
+      <div style="display:flex;align-items:center;margin-bottom:12px">
+        <div class="legend" style="flex:1;margin-top:0;font-size:13.2px">
+          <span><i style="background:var(--yellow)"></i>수업 변경 전(결강)</span>
+          <span><i style="background:var(--mint)"></i>수업 변경 후(맞교체로 옮겨옴)</span>
+          <span><i style="background:#f9dbe6"></i>동교과 보강</span>
+          <span><i style="background:var(--sand)"></i>나이스 미반영(시수 보충용)</span>
+          <span><i style="background:#e3d9f7"></i>동일 교과 교사끼리 자체 교체</span>
+        </div>
+        <h2 style="flex:1;font-size:22px;font-weight:800;text-align:center;margin:0">전체교사 시간표</h2>
+        <div style="flex:1"></div>
       </div>
+      <div class="card" id="allTTWrap2"></div>
     </section>
 
     <!-- ===== 반별 시간표 ===== -->
