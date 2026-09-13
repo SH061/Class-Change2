@@ -2376,7 +2376,7 @@ function classScheduleLive(gradeCls){
   const cells=[[],[],[],[],[]];for(let d=0;d<5;d++)for(const p of PERIODS)cells[d][p]=null;
   for(const t of M.teachers)for(let d=0;d<5;d++)for(const p of PERIODS){
     const c=coteachCellOf(t.name,d,p); // 동교과 자체 교체(예: 공통국어1 차민주/김소라)가 있으면 그 결과로 반영
-    if(c&&!c.block&&(c.grade+'-'+c.cls)===gradeCls)cells[d][p]={teacher:t.name,subject:subjFull(t.name,c)};
+    if(c&&!c.block&&(c.grade+'-'+c.cls)===gradeCls)cells[d][p]={teacher:t.name,subject:subjFull(t.name,c),coteach:!!c.coteach};
   }
   for(const r of Store.all()){
     const a=r.absent,mk=r.makeup,cv=r.cover;
@@ -2385,12 +2385,13 @@ function classScheduleLive(gradeCls){
     if(applicantClass===gradeCls){
       const ad=wd(a.date);
       if(ad>=0&&iso(dayDate(ad))===a.date){
-        // 보강이든 맞교체든, 이 시간엔 이제 cover 교사가 수업합니다(비는 게 아님)
-        cells[ad][a.period]={teacher:cv.teacher,subject:(cv.subject||a.subject),fill:true};
+        // 보강이든 맞교체든, 이 시간엔 이제 cover 교사가 수업합니다(비는 게 아님) — 무슨 종류로
+        // 채워졌는지(동교과 보강/나이스 미반영/맞교체)에 따라 색을 다르게 표시하기 위해 표시해둠.
+        cells[ad][a.period]={teacher:cv.teacher,subject:(cv.subject||a.subject),fill:true,subType:r.type,neisSkip:!!r.neisSkip};
       }
       if(r.type==='swap'&&mk&&mk.date){
         const mdi=wd(mk.date);
-        if(mdi>=0&&iso(dayDate(mdi))===mk.date)cells[mdi][mk.period]={teacher:r.applicant,subject:a.subject,fill:true};
+        if(mdi>=0&&iso(dayDate(mdi))===mk.date)cells[mdi][mk.period]={teacher:r.applicant,subject:a.subject,fill:true,subType:'swap'};
       }
     }
     // 맞교체 상대방 자신의 반(신청자 반과 다를 때)은 원래 자리가 비게 됨
@@ -2420,7 +2421,13 @@ function renderClassTTGeneric(selId,wrapId){
       }
       let cls='slot',inner='';
       if(c&&c.empty){cls+=' empty mk-vac'}
-      else if(c){cls+=' has';if(c.fill)cls+=' mk-fill';
+      else if(c){cls+=' has';
+        if(c.coteach)cls+=' mk-coteach';
+        if(c.fill){
+          cls+=' mk-fill';
+          if(c.neisSkip)cls+=' mk-neis';
+          else if(c.subType==='sub')cls+=' mk-subfill';
+        }
         inner='<span class="cl">'+(c.subject||'')+'</span><span class="sub">'+c.teacher+'</span>';}
       else cls+=' empty';
       h+='<td class="'+cls+'">'+inner+'</td>';
