@@ -1657,8 +1657,19 @@ function ttTable(name,opts){
       if(blk&&(blk.type!=='단축'||p>(blk.last||7))){
         h+='<td class="slot holiday"><span class="blk">'+(blk.type==='단축'?'단축':blk.type)+'</span></td>';continue;}
       const pblk=acPeriodBlocks(iso(dayDate(d)))[p];
-      if(pblk){h+='<td class="slot holiday"><span class="blk">'+pblk+'</span></td>';continue;}
-      const rawC=opts.effective?effectiveCell(name,d,p):t.cells[d][p];
+      const rawC0=opts.effective?effectiveCell(name,d,p):t.cells[d][p];
+      if(pblk){
+        // 영어듣기평가처럼 하루 전체가 아니라 이 교시만 수업이 없어지는 경우 — 원래 이 시간에 수업이
+        // 있던 선생님은 그 교시에 감독으로 들어가는 게 보통이라, 그냥 안내문만 띄우면 "내가 감독인지"
+        // 헷갈리므로 원래 반을 다른 칸과 똑같이 보여주고 그 아래에 시험명을 함께 적어줌.
+        if(rawC0&&!rawC0.block&&rawC0.grade&&rawC0.cls){
+          h+='<td class="slot has examSlot"><span class="cl">'+rawC0.label+'</span><span class="sub">'+pblk+'</span></td>';
+        }else{
+          h+='<td class="slot holiday"><span class="blk">'+pblk+'</span></td>';
+        }
+        continue;
+      }
+      const rawC=rawC0;
       const k=mk[d+'-'+p];
       // 비워짐(vac)=항상 빈칸, 채워짐(fill)=지정된 내용(없으면 원자료) — 신청자·상대 동일 규칙
       let c=rawC;
@@ -2232,7 +2243,12 @@ function renderClassTTGeneric(selId,wrapId){
       const blk=dayBlocked(d),c=cells[d][p];
       if(blk&&(blk.type!=='단축'||p>(blk.last||7))){h+='<td class="slot holiday"><span class="blk">'+(blk.type==='단축'?'단축':blk.type)+'</span></td>';continue}
       const pblk=acPeriodBlocks(iso(dayDate(d)))[p];
-      if(pblk){h+='<td class="slot holiday"><span class="blk">'+pblk+'</span></td>';continue}
+      if(pblk){
+        // 영어듣기평가 등 이 교시만 수업이 없어지는 경우 — 원래 이 반에 들어오던 선생님이 감독으로
+        // 들어가는 게 보통이므로, 과목/선생님을 그대로 보여주고 그 아래에 시험명을 함께 적어줌.
+        if(c&&!c.empty){h+='<td class="slot has examSlot"><span class="cl">'+(c.subject||'')+'</span><span class="sub">'+c.teacher+' · '+pblk+'</span></td>';continue}
+        h+='<td class="slot holiday"><span class="blk">'+pblk+'</span></td>';continue;
+      }
       let cls='slot',inner='';
       if(c&&c.empty){cls+=' empty mk-vac'}
       else if(c){cls+=' has';if(c.fill)cls+=' mk-fill';
@@ -2582,14 +2598,19 @@ function done(){PICK=DRAG=SWFROM=SWTO=SWPART=CHAINSEL=CHAIN2SEL=null;CHAINS=[];C
 /* ===== 확정 목록 ===== */
 function renderChgList(){
   const who=SWACTOR||ME;
-  const all=Store.all();
+  // 지금 보고 있는 주(월~금)에 걸린 결강 건만 표시 — 학기가 지날수록 계속 쌓여 화면이
+  // 한없이 길어지는 걸 막기 위해, 다른 주로 넘어가면 그 주 것만 새로 보여줌(기록 자체는 안 지워짐).
+  const wkStart=iso(dayDate(0)),wkEnd=iso(dayDate(4));
+  const inWeek=r=>r.absent&&r.absent.date>=wkStart&&r.absent.date<=wkEnd;
+  const all=Store.all().filter(inWeek);
+  const allNoWeek=Store.all();
   const mine=[];const groupRows=[];const handledGrp=new Set();
   // 1) 내가 신청자이거나, 내가 시작한(initiator) 3인 이상 다자간 교체의 당사자인 기록 — grp별로 하나로 묶음
   all.filter(x=>x.applicant===who||x.initiator===who).forEach(r=>{
     if(r.grp){
       if(handledGrp.has(r.grp))return;
       handledGrp.add(r.grp);
-      const full=all.filter(x=>x.grp===r.grp);
+      const full=allNoWeek.filter(x=>x.grp===r.grp);
       const people=[...new Set(full.map(x=>x.applicant))];
       if(people.length>=3){groupRows.push({grp:r.grp,people,rep:full.find(x=>x.applicant===who)||full[0]});return}
       mine.push(full.find(x=>x.applicant===who)||full[0]);
