@@ -2094,9 +2094,19 @@ function openDatePicker(valueId,labelId,emptyText,onPick){
   const cur=document.getElementById(valueId).value||iso(new Date());
   const[y,m]=cur.split('-');CAL_PICK_Y=+y;CAL_PICK_M=+m;
   renderDCPicker();
-  const btn=document.querySelector('[data-datefield="'+valueId+'"]');
-  if(btn){const r=btn.getBoundingClientRect();picker.style.top=(r.bottom+window.scrollY+4)+'px';picker.style.left=(r.left+window.scrollX)+'px';}
   picker.hidden=false;
+  const btn=document.querySelector('[data-datefield="'+valueId+'"]');
+  if(btn){
+    // position:fixed 기준이라 뷰포트 좌표를 그대로 씀(스크롤 오프셋을 더하면 스크롤된 페이지에서
+    // 화면 밖으로 밀려나 잘려 보이는 원인이 됨). 화면 오른쪽/아래로 넘치면 반대쪽으로 붙여서
+    // 항상 화면 안에 온전히 보이게 함.
+    const r=btn.getBoundingClientRect();
+    const pw=picker.offsetWidth||300,ph=picker.offsetHeight||360;
+    let top=r.bottom+4,left=r.left;
+    if(left+pw>window.innerWidth-8)left=Math.max(8,window.innerWidth-8-pw);
+    if(top+ph>window.innerHeight-8)top=Math.max(8,r.top-4-ph);
+    picker.style.top=top+'px';picker.style.left=left+'px';
+  }
   document.addEventListener('click',dcOutsideClick,true);
 }
 function closeDatePicker(){document.getElementById('dcPicker').hidden=true;document.removeEventListener('click',dcOutsideClick,true)}
