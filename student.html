@@ -468,10 +468,12 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
   #ttWrap table.tt td .elec{font-size:10.5px}
   #ttWrap table.tt td .blk{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 
-  /* 반별 시간표: 선택창 하나 + 표만, 한 화면에 꽉 차게 */
-  #clsTTWrap2,#clsTTWrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* 반별 시간표: 선택창 하나 + 표만, 한 화면에 꽉 차게
+     — 카드 패딩을 내 시간표(#view-tt .card, 위에서 10px로 줄임)와 맞춰야
+     표 실제 폭이 같아져서 칸 크기도 똑같이 보임(안 맞추면 여기 칸이 더 좁아짐) */
+  #clsTTWrap2,#clsTTWrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:10px}
   table.tt.clsTT{min-width:560px}
-  table.tt.clsTT col.phead{width:70px}
+  table.tt.clsTT col.phead{width:78px}
   table.tt.clsTT td.slot{height:64px}
   table.tt.clsTT td .cl{font-size:19px}
   table.tt.clsTT td .sub{font-size:11px}
@@ -525,11 +527,13 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
   #ttWrap table.tt td .elec{font-size:7px}
   #ttWrap table.tt td .blk{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 
+  /* 여기도 마찬가지로 카드 패딩을 내 시간표(#view-tt .card, 위에서 8px로 줄임)와 맞춤 */
+  #clsTTWrap2,#clsTTWrap{padding:8px}
   table.tt.clsTT{min-width:0}
   table.tt.clsTT col.phead{width:44px}
-  table.tt.clsTT td.slot{height:58px}
+  table.tt.clsTT td.slot{height:50px}
   table.tt.clsTT td .cl{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
-  table.tt.clsTT td .sub{font-size:9px}
+  table.tt.clsTT td .sub{font-size:7.5px}
   table.tt.clsTT td .blk{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
   table.tt.clsTT thead th span{font-size:12px!important}
   table.tt.clsTT tbody th span{font-size:11px!important}
