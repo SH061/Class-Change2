@@ -158,6 +158,15 @@ table.tt.clsTT td .sub{font-size:16px;font-weight:700}
 .calNavMobile{display:none!important}
 .cal-sheet .calGridTable td{height:74px}
 .noticeModal .sheet .x{position:absolute;top:24px;right:28px;cursor:pointer;font-size:24px;color:var(--muted);background:none;border:0}
+/* 진도표: 반 칸 클릭 가능 표시 + 등록 폼(PC 한 줄 / 모바일 줄바꿈) + 오늘 항목 강조 */
+td.progressable{cursor:pointer}
+td.progressable:hover{outline:2px solid var(--primary-active);outline-offset:-2px}
+.progAddRow{display:flex;gap:8px;align-items:flex-start;margin-top:10px}
+.progAddRow textarea{flex:1;min-height:38px;resize:vertical}
+.progEntry{border:1px solid var(--hairline);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.progEntry.today{background:#fbe9e4;border-color:#e3a893}
+.progEntry .meta{font-size:12px;color:var(--muted);margin-bottom:4px}
+.progEntry .body{white-space:pre-line}
 .noticeItem{border-bottom:1px solid var(--hairline);padding:16px 0}
 .noticeItem:first-of-type{padding-top:14px}
 .noticeItem:last-of-type{border-bottom:0}
@@ -393,6 +402,12 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
      전혀 영향을 주지 않습니다. PC 쪽 스타일은 위쪽 규칙 그대로 유지됩니다.
    ================================================================ */
 @media (max-width:1024px){
+  /* 진도표 등록줄: 날짜칩+저장 한 줄, 입력창은 그 아래 한 줄 전체 */
+  .progAddRow{flex-wrap:wrap}
+  .progAddRow input[type=date],.progAddRow input[type=number]{flex:0 0 auto}
+  .progAddRow button{margin-left:auto}
+  .progAddRow textarea{flex:1 1 100%;order:3}
+
   /* 밖에서 볼 일이 적은 탭은 숨기고, 내 시간표 / 반별 시간표만 노출 + "더보기" 메뉴로 나머지 접근 */
   nav.tabs button[data-v="swap"],
   nav.tabs button[data-v="jilji"],
@@ -794,6 +809,21 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
       </div>
     </div>
 
+    <!-- ===== 진도표 확대 모달 ===== -->
+    <div class="noticeModal" id="progModal" onclick="if(event.target===this)closeProgModal()">
+      <div class="sheet" style="position:relative;max-width:640px">
+        <button class="x" onclick="closeProgModal()">✕</button>
+        <h2>&lt;<select id="progClsSel" onchange="switchProgClass(this.value)" style="font-size:inherit;font-weight:inherit;border:0;background:none;padding:0"></select>반 <span id="progSubj"></span> 진도표&gt;</h2>
+        <div class="progAddRow">
+          <input id="progDate" type="date">
+          <input id="progPeriod" type="number" min="1" max="7" style="width:64px" placeholder="교시">
+          <textarea id="progBody" placeholder="이 날짜·교시에 나간 진도/특이사항"></textarea>
+          <button class="btn sm" onclick="saveProgress()">저장</button>
+        </div>
+        <div id="progList" style="margin-top:14px"></div>
+      </div>
+    </div>
+
     <!-- ===== 수업교체 ===== -->
     <section id="view-swap" hidden>
       <div id="pbarSW"></div>
@@ -860,7 +890,7 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
 
 <script>
 /* ===== 저장 유틸 ===== */
-const LS={cfg:'dgs_cfg_v3',user:'dgs_user_v3',changes:'dgs_changes_v3',academic:'dgs_academic_v3',form:'dgs_form_v3',notices:'dgs_notices_v1'};
+const LS={cfg:'dgs_cfg_v3',user:'dgs_user_v3',changes:'dgs_changes_v3',academic:'dgs_academic_v3',form:'dgs_form_v3',notices:'dgs_notices_v1',code:'dgs_code_v1'};
 const _mem={};
 function lsGet(k){try{const v=localStorage.getItem(k);return v==null?(_mem[k]??null):v}catch(e){return _mem[k]??null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){_mem[k]=v}}
@@ -1298,12 +1328,17 @@ function boot(){
   if(c.tt)document.getElementById('cfgTT').value=c.tt;
   const appsUrl='supabase';
   ACTIVE_APPS_URL=appsUrl;
-  fetchAppsScript(appsUrl).then(j=>{buildModel(j.rows,j.teachers||c.te);applyRemoteSync(j);afterLoad()}).catch(showErr);
+  fetchAppsScript(appsUrl).then(j=>{
+    buildModel(j.rows,j.teachers||c.te);applyRemoteSync(j);
+    SCHOOL_CODE=j.schoolCode||'12345';PROGRESS_ALLOW_LIST=j.progressAllow||[];
+    afterLoad();
+  }).catch(showErr);
 }
 function getCfg(){try{return JSON.parse(lsGet(LS.cfg))||{}}catch(e){return{}}}
 function setCfg(c){lsSet(LS.cfg,JSON.stringify(c))}
 async function fetchCSVUrl(url){const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);return parseCSV(await r.text())}
 let ACTIVE_APPS_URL=null,REMOTE_HOMEROOMS=[];
+let SCHOOL_CODE='12345',PROGRESS_ALLOW_LIST=[],PROGRESS_ALLOWED=false;
 async function sbGetConfig(){
   const{data,error}=await sb.from('config').select('key,value');
   if(error)throw error;
@@ -1350,6 +1385,19 @@ async function sbGetSwaps(){
   if(scope.length)list=list.filter(r=>scope.includes(r.applicant));
   return list;
 }
+async function sbGetProgress(grade,cls,subject){
+  const{data,error}=await sb.from('progress_log').select('*')
+    .eq('grade',grade).eq('cls',cls).eq('subject',subject).order('date',{ascending:false}).order('period',{ascending:false});
+  if(error)throw error;
+  return data||[];
+}
+async function sbSaveProgress(entry){
+  const{error}=await sb.from('progress_log').upsert({
+    grade:entry.grade,cls:entry.cls,subject:entry.subject,date:entry.date,period:entry.period,
+    body:entry.body||'',writer:entry.writer,updated_at:new Date().toISOString()
+  },{onConflict:'grade,cls,subject,date,period'});
+  if(error)throw error;
+}
 async function fetchAppsScript(url){
   const cfg=await sbGetConfig();
   const[rows,academic,notices,teachers,swaps]=await Promise.all([
@@ -1357,7 +1405,9 @@ async function fetchAppsScript(url){
   ]);
   const homerooms=(cfg['담임명단']||'').split(',').map(s=>s.trim()).filter(Boolean);
   const weeks=Number(cfg['표시주수'])||null;
-  return{rows,academic,notices,homerooms,teachers,weeks,swaps};
+  const schoolCode=cfg['학교코드']||'12345';
+  const progressAllow=(cfg['진도표접근허용']||'').split(',').map(s=>s.trim()).filter(Boolean);
+  return{rows,academic,notices,homerooms,teachers,weeks,swaps,schoolCode,progressAllow};
 }
 // 앱스크립트에서 받아온 학사일정/안내/담임명단을 이 브라우저의 화면에도 그대로 반영(단방향: 시트→화면).
 // 학사일정·안내는 1학년 담임이 addCal()/addNotice()로 등록하면 시트에 저장되고, 그 결과가 다시 여기로 돌아와 반영됨.
@@ -1446,10 +1496,28 @@ async function postAppsScript(url,body){
 }
 function showErr(e){document.getElementById('loginBody').innerHTML='<p class="err">불러오기 실패: '+e.message+'</p>'}
 function afterLoad(){
+  if(lsGet(LS.code)!=='1'){renderCodeGate();return}
+  proceedAfterCode();
+}
+function proceedAfterCode(){
   renderLoginList();
   updatePubTitle();
   showPublicTab(PUBTAB);
   const u=lsGet(LS.user);if(u&&M.byName[u]){ME=u;enterApp()}
+}
+// 학교 코드: 처음 한 번만 확인하고(설정 시트 "학교코드" 값과 대조) 통과하면 이 기기에는 계속 저장되어
+// 다음부터는 곧장 이름 선택 화면으로 넘어감. 코드 자체는 관리자가 구글시트/Supabase에서만 바꿀 수 있음.
+function renderCodeGate(){
+  const b=document.getElementById('loginBody');
+  b.innerHTML='<div class="field"><label style="font-size:21px">학교 코드</label>'+
+    '<input id="schoolCodeInput" type="text" inputmode="numeric" placeholder="학교에서 안내받은 코드를 입력하세요" style="font-size:23px;padding:16px 18px;width:100%" onkeydown="if(event.key===\'Enter\')submitSchoolCode()"></div>'+
+    '<div id="codeErr" class="err" style="margin-top:8px"></div>'+
+    '<div style="margin-top:21px"><button class="btn" style="font-size:22px;padding:17px 36px" onclick="submitSchoolCode()">확인</button></div>';
+}
+function submitSchoolCode(){
+  const v=(document.getElementById('schoolCodeInput').value||'').trim();
+  if(v&&v===String(SCHOOL_CODE||'').trim()){lsSet(LS.code,'1');proceedAfterCode()}
+  else document.getElementById('codeErr').textContent='코드가 올바르지 않습니다.';
 }
 function updatePubTitle(){
   const f=getForm();const t=document.getElementById('pubTitle');
@@ -1478,6 +1546,7 @@ function renderBrand(){
   el.innerHTML='<b>'+f.school+'</b> · '+(f.semester||'')+' 수업교체 시스템';
 }
 function enterApp(){
+  PROGRESS_ALLOWED=PROGRESS_ALLOW_LIST.includes(ME);
   document.getElementById('login').hidden=true;document.getElementById('app').hidden=false;
   document.getElementById('meName').textContent=ME;document.getElementById('ttWho').textContent=ME;
   document.getElementById('navMgrBtn').hidden=!mgrAccessOK();
@@ -1578,6 +1647,9 @@ function ttTable(name,opts){
       if(opts.selectable){
         if(c&&!c.block)attr=' draggable="true" ondragstart="dragStart(event,'+d+','+p+')" onclick="slotClick('+d+','+p+')"';
         else if(!c)attr=' ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropOn(event,'+d+','+p+')" onclick="emptyClick('+d+','+p+')"';
+      }else if(opts.progress&&c&&!c.block&&c.grade&&c.cls){
+        cls.push('progressable');
+        attr=' onclick="openProgModal('+d+','+p+',\''+esc(c.grade)+'\',\''+esc(c.cls)+'\',\''+esc(subjFull(name,c)||c.label)+'\')"';
       }
       h+='<td class="'+cls.join(' ')+'"'+attr+'>'+inner+'</td>';
     }
@@ -1585,7 +1657,62 @@ function ttTable(name,opts){
   }
   return h+'</tbody></table>';
 }
-function renderTimetable(){document.getElementById('ttWrap').innerHTML=ttTable(ME,{self:true,effective:true});renderTTSidebar()}
+function renderTimetable(){document.getElementById('ttWrap').innerHTML=ttTable(ME,{self:true,effective:true,progress:PROGRESS_ALLOWED});renderTTSidebar()}
+
+/* ===== 진도표 (반 칸 클릭 → 확대 팝업) ===== */
+// 내가 맡은 반 목록 — 팝업 제목 옆 드롭다운에서 반을 바꿔가며 볼 수 있게, 원본 시간표(raw, 시수 무관하게 전부)에서 뽑음
+function myClassOptions(){
+  const t=M.byName[ME];if(!t)return[];
+  const map=new Map();
+  for(let d=0;d<5;d++)for(const p of PERIODS){
+    const c=t.cells[d][p];if(!c||c.block||!c.grade||!c.cls)continue;
+    const key=c.grade+'-'+c.cls;
+    if(!map.has(key))map.set(key,{grade:c.grade,cls:c.cls,subject:subjFull(ME,c)||c.label});
+  }
+  return[...map.values()].sort((a,b)=>(a.grade+'-'+a.cls).localeCompare(b.grade+'-'+b.cls,'ko',{numeric:true}));
+}
+let PROG_CUR=null;
+function openProgModal(d,p,grade,cls,subject){
+  if(!PROGRESS_ALLOWED)return;
+  PROG_CUR={grade,cls,subject};
+  const opts=myClassOptions();
+  const sel=document.getElementById('progClsSel');
+  sel.innerHTML=opts.map(o=>'<option value="'+o.grade+'-'+o.cls+'" '+(o.grade===grade&&o.cls===cls?'selected':'')+'>'+o.grade+'-'+o.cls+'</option>').join('');
+  document.getElementById('progSubj').textContent=subject;
+  document.getElementById('progDate').value=iso(dayDate(d));
+  document.getElementById('progPeriod').value=p;
+  document.getElementById('progBody').value='';
+  renderProgList();
+  document.getElementById('progModal').classList.add('on');
+}
+function closeProgModal(){document.getElementById('progModal').classList.remove('on')}
+function switchProgClass(key){
+  const o=myClassOptions().find(x=>(x.grade+'-'+x.cls)===key);if(!o)return;
+  PROG_CUR={grade:o.grade,cls:o.cls,subject:o.subject};
+  document.getElementById('progSubj').textContent=o.subject;
+  renderProgList();
+}
+async function renderProgList(){
+  const box=document.getElementById('progList');box.innerHTML='<p class="muted">불러오는 중…</p>';
+  try{
+    const rows=await sbGetProgress(PROG_CUR.grade,PROG_CUR.cls,PROG_CUR.subject);
+    const today=iso(new Date());
+    box.innerHTML=rows.length?rows.map(r=>
+      '<div class="progEntry'+(r.date===today?' today':'')+'"><div class="meta">'+md(dparse(r.date))+' '+r.period+'교시 · '+r.writer+'</div>'+
+      '<div class="body">'+esc(r.body||'').replace(/\n/g,'<br>')+'</div></div>'
+    ).join(''):'<p class="muted">아직 기록된 진도가 없습니다.</p>';
+  }catch(e){box.innerHTML='<p class="err">불러오기 실패: '+e.message+'</p>'}
+}
+async function saveProgress(){
+  const date=document.getElementById('progDate').value,period=+document.getElementById('progPeriod').value;
+  const body=document.getElementById('progBody').value.trim();
+  if(!date||!period){appAlert('날짜와 교시를 입력하세요.');return}
+  try{
+    await sbSaveProgress({grade:PROG_CUR.grade,cls:PROG_CUR.cls,subject:PROG_CUR.subject,date,period,body,writer:ME});
+    document.getElementById('progBody').value='';
+    renderProgList();
+  }catch(e){appAlert('저장 실패: '+e.message)}
+}
 
 /* ===== 내 시간표 오른쪽 사이드 카드 3개 ===== */
 function renderTTSidebar(){renderChgSummary();renderCalWeekSummary();renderNoticeSummary()}
@@ -2631,7 +2758,9 @@ function renderJilji(){
   const who=SWACTOR||ME;
   // 내가 신청한 것뿐 아니라, 내가 시작한(initiator) 맞교체·연쇄이동은 관련된 다른 선생님 몫도 함께 뽑을 수 있어야 함.
   // 다만 같은 교체를 양쪽에서 두 번 기록해둔 것(primary:false는 반대편 사본)은 내 쪽에서 중복으로 세지 않음.
-  const mine=Store.all().filter(x=>x.applicant===who||(x.initiator===who&&x.primary!==false));
+  // 내가 다른 선생님 결강 시간에 대신 보강을 들어간 경우(cover.teacher===나)도, 내가 나중에 내 이름으로
+  // 서류를 뽑아 제출/보관하고 싶을 수 있어서 목록에 함께 포함시킴 (인쇄 시 "교사" 란도 내 이름으로 나감).
+  const mine=Store.all().filter(x=>x.applicant===who||(x.initiator===who&&x.primary!==false)||(x.cover&&x.cover.teacher===who));
   renderJiljiSelector(mine);
   const use=JILJI_SEL?mine.filter(x=>JILJI_SEL.has(x.id)):mine;
   const wrap=document.getElementById('jiljiWrap');
@@ -2653,14 +2782,14 @@ function renderJiljiSelector(mine){
     '<div class="row" style="margin-top:8px"><button class="btn sm ghost" onclick="jiljiSelAll(true)">전체 선택</button><button class="btn sm ghost" onclick="jiljiSelAll(false)">전체 해제</button></div></div>';
 }
 function toggleJiljiSel(id,on){if(on)JILJI_SEL.add(id);else JILJI_SEL.delete(id);renderJilji()}
-function jiljiSelAll(on){const who=SWACTOR||ME;const mine=Store.all().filter(x=>x.applicant===who||(x.initiator===who&&x.primary!==false));JILJI_SEL=on?new Set(mine.map(x=>x.id)):new Set();renderJilji()}
+function jiljiSelAll(on){const who=SWACTOR||ME;const mine=Store.all().filter(x=>x.applicant===who||(x.initiator===who&&x.primary!==false)||(x.cover&&x.cover.teacher===who));JILJI_SEL=on?new Set(mine.map(x=>x.id)):new Set();renderJilji()}
 function jiljiInto(wrap,records,emptyMsg,viewer){
   if(!records.length){wrap.innerHTML='<p class="muted">'+emptyMsg+'</p>';return}
   // 내가(viewer) 시작한 맞교체·연쇄이동은, 실제로 몇 명이 얽혔든 내가 처리한 일이므로
   // 그 안의 다른 선생님 몫까지 전부 내 이름 한 장에 여러 줄로 모아서 씁니다(각자 몫을 따로 인쇄하지 않음).
   // 작성일·사유가 서로 달라도, 한 번에 선택해 인쇄하면 그 사람 몫은 한 장에 표만 이어서 나오게 함 (신청자별로만 묶음)
   const g={};records.forEach(x=>{
-    const owner=(viewer&&x.grp&&x.initiator===viewer)?viewer:x.applicant;
+    const owner=(viewer&&((x.grp&&x.initiator===viewer)||(x.cover&&x.cover.teacher===viewer)))?viewer:x.applicant;
     (g[owner]=g[owner]||[]).push(x);
   });
   wrap.innerHTML='<div class="jscale" id="jscale">'+Object.entries(g).map(([owner,rows])=>jiljiSheet(owner,rows)).join('')+'</div>';
