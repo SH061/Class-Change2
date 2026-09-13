@@ -728,7 +728,7 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
           <h2 style="text-align:center;flex:1;margin:0" id="calModalTitle">학사일정</h2>
           <button type="button" class="btn sm ghost calNavDesktop" onclick="calNav(1)">다음달 ›</button>
         </div>
-        <p class="muted" style="margin:6px 0 4px;text-align:center">날짜를 보면 제목만 보이고, 제목을 누르면 자세한 내용이 나옵니다. 1학년 담임 선생님만 새 일정을 추가할 수 있습니다.</p>
+        <p class="muted" style="margin:6px 0 4px;text-align:center">날짜를 보면 제목만 보이고, 제목을 누르면 자세한 내용이 나옵니다.</p>
         <div class="calNavMobile" style="align-items:center;justify-content:center;gap:14px;margin:8px 0">
           <button type="button" class="btn sm ghost" onclick="calNav(-1)">‹ 이전달</button>
           <button type="button" class="btn sm ghost" onclick="calNav(1)">다음달 ›</button>
@@ -1963,7 +1963,7 @@ function renderNoticeModalList(){
   document.getElementById('noticeSubTab-pending').classList.toggle('on',NOTICE_SUBTAB==='pending');
   document.getElementById('noticeSubTab-done').classList.toggle('on',NOTICE_SUBTAB==='done');
   document.getElementById('newDept').hidden=NOTICE_CAT!=='school';
-  document.getElementById('noticePermMsg').textContent=isHomeroom()?'1학년 담임 선생님으로 로그인되어 있어 새 안내를 추가할 수 있습니다.':'1학년 담임 선생님만 새 안내를 추가할 수 있습니다.';
+  document.getElementById('noticePermMsg').textContent='';
   const list=Notices.all().filter(n=>(n.category||'school')===NOTICE_CAT&&!!n.done===(NOTICE_SUBTAB==='done'));
   document.getElementById('noticeList').innerHTML=list.length?list.map((n,i)=>
     '<div class="noticeItem"><div class="row" style="align-items:center;gap:8px;cursor:pointer" onclick="toggleNoticeOpen(\''+n.id+'\')">'+
