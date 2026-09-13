@@ -480,6 +480,10 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
   /* 학사일정 모달: 이전달/다음달은 PC에서만 제목 옆으로 붙임 — 모바일/태블릿은 기존처럼 제목 아래 가운데 정렬된 별도 줄 유지 */
   .calNavDesktop{display:none!important}
   .calNavMobile{display:flex!important}
+  /* 이전달/다음달 버튼이 사라지면 제목 줄에 오른쪽 여백(닫기 버튼 자리)만 남아 제목이 오른쪽으로 치우쳐 보이므로,
+     같은 여백을 제목 쪽에도 대칭으로 줘서 실제로 가운데 정렬되게 함 */
+  .cal-sheet .calTitleRow{padding-right:0!important}
+  .cal-sheet #calModalTitle{padding:0 40px!important}
 }
 
 @media (max-width:600px){
@@ -924,6 +928,12 @@ function periodEnd(start){
   return (eh<10?'0':'')+eh+':'+(em<10?'0':'')+em;
 }
 function periodTimeLabel(p){const st=getForm().times[p];if(!st)return'';return st+'~'+periodEnd(st)}
+// 학생용 반별 시간표는 칸이 좁아 "09:00~09:50" 전체가 넘치므로 시작 시각만 "(9:00)" 형태로 짧게 보여줌
+function periodTimeLabelShort(p){
+  const st=getForm().times[p];if(!st)return'';
+  const m=st.match(/^0?(\d{1,2}):(\d{2})$/);if(!m)return'';
+  return '('+m[1]+':'+m[2]+')';
+}
 function setForm(f){lsSet(LS.form,JSON.stringify(f))}
 function isManager(){const m=(getForm().managers||'').split(/[,\s]+/).filter(Boolean);return !m.length||m.includes(ME)}
 // [수업계] 탭은 다른 사람이 실수로/일부러 들어오지 못하도록 주소에 ?mgr=1 이 붙어 있을 때만 열립니다.
@@ -2350,7 +2360,7 @@ function renderClassTTGeneric(selId,wrapId){
   let h='<table class="tt clsTT"><colgroup><col class="phead">'+DAYNAMES.map(()=>'<col>').join('')+'</colgroup><thead><tr><th>교시</th>'+
     DAYNAMES.map((d,i)=>'<th><span style="font-size:26px;font-weight:800;white-space:nowrap">'+md(dayDate(i))+'('+d+')</span></th>').join('')+'</tr></thead><tbody>';
   for(const p of PERIODS){
-    h+='<tr><th><span style="font-size:22px;font-weight:800">'+p+'</span><br><span style="font-weight:600;font-size:13px;color:#8e8b82;white-space:nowrap">'+periodTimeLabel(p)+'</span></th>';
+    h+='<tr><th><span style="font-size:22px;font-weight:800">'+p+'</span><br><span style="font-weight:600;font-size:13px;color:#8e8b82;white-space:nowrap">'+periodTimeLabelShort(p)+'</span></th>';
     for(let d=0;d<5;d++){
       const blk=dayBlocked(d),c=cells[d][p];
       if(blk&&(blk.type!=='단축'||p>(blk.last||7))){h+='<td class="slot holiday"><span class="blk">'+(blk.type==='단축'?'단축':blk.type)+'</span></td>';continue}
