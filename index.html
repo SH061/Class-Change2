@@ -231,7 +231,7 @@ table.tt.clsTT td .sub{font-size:16px;font-weight:700}
 .chainrow .chaincol table.tt td .sub{font-size:9.5px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .chainrow .chaincol table.tt td .elec{font-size:10px;padding:0 5px}
 .legend i{width:11px;height:11px;border-radius:3px;display:inline-block;vertical-align:-1px;margin-right:4px}
-table.tt td.hit{background:var(--yellow)!important;outline:2px solid var(--primary-active);outline-offset:-2px}
+table.tt td.hit{background:#dce7ef!important;outline:2px solid #7d9cb3;outline-offset:-2px}
 .chip{display:inline-block;border:1px solid var(--hairline);background:#fff;border-radius:99px;padding:5px 16px;font-size:15.5px;font-weight:700;cursor:pointer;margin:0 8px 8px 0}
 .chip.on{background:var(--primary);color:#fff;border-color:var(--primary)}
 .gradeChips{display:flex;flex-direction:column;gap:6px}
@@ -360,6 +360,11 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
 
 @media print{
   header.top,nav.tabs,nav.subtabs,.noprint,.pbar{display:none!important}
+  /* .noticeModal(학사일정/안내/상세보기 등 팝업)은 평소 화면에서는 배경이 투명하고
+     pointer-events:none이라 안 보일 뿐, display:flex 상태로 항상 뷰포트 전체 크기로
+     깔려 있음 — 인쇄 시 이 보이지 않는 레이어가 인쇄 엔진에 그대로 잡혀 빈 페이지가
+     추가로 뽑히는 원인이었으므로, 인쇄할 때는 완전히 없앰(열려 있던 팝업도 함께 숨김) */
+  .noticeModal{display:none!important}
   main{padding:0}.wrap{max-width:none;padding:0}
   body{background:#fff}.card{background:#fff;padding:0}
   body:not(.print-tt) #view-tt{display:none!important}
@@ -1982,8 +1987,7 @@ function allTTBar(targetId){
   const byGrade={};allClasses().forEach(c=>{const g=c.split('-')[0];(byGrade[g]=byGrade[g]||[]).push(c)});
   h+='<div class="gradeChips">'+Object.keys(byGrade).sort().map(g=>
     '<div class="gradeChipRow">'+byGrade[g].map(c=>'<span class="chip'+(ALLTT_HILITE===c?' on':'')+'" onclick="pickAllTTClass(\''+c+'\')">'+c+'반</span>').join('')+'</div>'
-  ).join('')+'</div>'+
-  (ALLTT_HILITE?'<span class="chip" onclick="pickAllTTClass(null)" style="background:var(--canvas)">지우기 ✕</span>':'');
+  ).join('')+'</div>';
   h+='</div>';
   return h;
 }
@@ -2224,12 +2228,12 @@ function renderPreview(){
   // 왼쪽 시간표도 같이 미리보기: 비워지는 자리=노란색, 새로 채워지는 자리=민트색
   const myMarks={};myMarks[from.d+'-'+from.p]={k:'vac'};
   myMarks[to.d+'-'+to.p]={k:'fill',cell:{grade:my.grade,cls:my.cls,label:my.label,subj:my.subj||subjFull(SWACTOR,my),elective:false}};
-  document.getElementById('swGrid').innerHTML=ttTable(SWACTOR,{marks:myMarks});
+  document.getElementById('swGrid').innerHTML=ttTable(SWACTOR,{marks:myMarks,effective:true});
   let h='<button class="btn sm ghost" onclick="doMove(SWFROM,SWTO)">← 교사 목록</button>';
   h+='<p class="muted" style="margin:10px 0">'+SWACTOR+' ↔ '+P+' 이 서로 수업을 맞바꿉니다.</p>';
   h+='<div class="legend" style="margin-bottom:10px"><span><i style="background:var(--yellow)"></i>이전 수업 (비워짐)</span><span><i style="background:var(--mint)"></i>수정된 수업 (채워짐)</span></div>';
   h+='<h3 style="font-size:14px;margin-bottom:6px">상대 교사 시간표 · '+P+'</h3>';
-  h+=ttTable(P,{marks});
+  h+=ttTable(P,{marks,effective:true});
   h+='<button class="btn" style="margin-top:10px" onclick="confirmMove()">이 교사와 교체 확정</button>';
   document.getElementById('swResult').innerHTML=h;
 }
@@ -2242,13 +2246,13 @@ function renderChainPreview(){
   markB[ch.S3.d+'-'+ch.S3.p]={k:'fill',cell:{grade:ch.cB.grade,cls:ch.cB.cls,label:ch.cB.label,subj:ch.cB.subj||subjFull(ch.B,ch.cB)}};
   const markC={};markC[ch.S3.d+'-'+ch.S3.p]={k:'vac'};
   markC[from.d+'-'+from.p]={k:'fill',cell:{grade:ch.cC.grade,cls:ch.cC.cls,label:ch.cC.label,subj:ch.cC.subj||subjFull(ch.C,ch.cC)}};
-  document.getElementById('swGrid').innerHTML=ttTable(SWACTOR,{marks:markA});
+  document.getElementById('swGrid').innerHTML=ttTable(SWACTOR,{marks:markA,effective:true});
   let h='<button class="btn sm ghost" onclick="doMove(SWFROM,SWTO)">← 목록으로</button>';
   h+='<p class="muted" style="margin:10px 0">'+SWACTOR+' → '+ch.B+' → '+ch.C+' → '+SWACTOR+' 순서로 3명의 수업이 돌아가며 자리를 바꿉니다.</p>';
   h+='<div class="legend" style="margin-bottom:10px"><span><i style="background:var(--yellow)"></i>이전 수업 (비워짐)</span><span><i style="background:var(--mint)"></i>수정된 수업 (채워짐)</span></div>';
   h+='<div class="chainrow">';
-  h+='<div class="chaincol"><h3>'+ch.B+'</h3>'+ttTable(ch.B,{marks:markB})+'</div>';
-  h+='<div class="chaincol"><h3>'+ch.C+'</h3>'+ttTable(ch.C,{marks:markC})+'</div>';
+  h+='<div class="chaincol"><h3>'+ch.B+'</h3>'+ttTable(ch.B,{marks:markB,effective:true})+'</div>';
+  h+='<div class="chaincol"><h3>'+ch.C+'</h3>'+ttTable(ch.C,{marks:markC,effective:true})+'</div>';
   h+='</div>';
   h+='<button class="btn" style="margin-top:10px" onclick="confirmChain()">이 조합으로 3명 모두 교체 확정</button>';
   document.getElementById('swResult').innerHTML=h;
@@ -2266,13 +2270,13 @@ function renderChain2Preview(){
   // C: to 비워짐 → from 채워짐(Z반)
   const markC={};markC[to.d+'-'+to.p]={k:'vac'};
   markC[from.d+'-'+from.p]={k:'fill',cell:{grade:ch.Z.grade,cls:ch.Z.cls,label:ch.Z.label,subj:ch.cC.subj||subjFull(ch.C,ch.cC)}};
-  document.getElementById('swGrid').innerHTML=ttTable(SWACTOR,{marks:markA});
+  document.getElementById('swGrid').innerHTML=ttTable(SWACTOR,{marks:markA,effective:true});
   let h='<button class="btn sm ghost" onclick="doMove(SWFROM,SWTO)">← 목록으로</button>';
   h+='<p class="muted" style="margin:10px 0">'+SWACTOR+' ↔ '+ch.B+' 은 <b>'+my.label+'</b> 반을, '+ch.B+' ↔ '+ch.C+' 은 <b>'+ch.clsZ+'</b> 반을 서로 맞바꿉니다.</p>';
   h+='<div class="legend" style="margin-bottom:10px"><span><i style="background:var(--yellow)"></i>이전 수업 (비워짐)</span><span><i style="background:var(--mint)"></i>수정된 수업 (채워짐/내용 변경)</span></div>';
   h+='<div class="chainrow">';
-  h+='<div class="chaincol"><h3>'+ch.B+'</h3>'+ttTable(ch.B,{marks:markB})+'</div>';
-  h+='<div class="chaincol"><h3>'+ch.C+'</h3>'+ttTable(ch.C,{marks:markC})+'</div>';
+  h+='<div class="chaincol"><h3>'+ch.B+'</h3>'+ttTable(ch.B,{marks:markB,effective:true})+'</div>';
+  h+='<div class="chaincol"><h3>'+ch.C+'</h3>'+ttTable(ch.C,{marks:markC,effective:true})+'</div>';
   h+='</div>';
   h+='<button class="btn" style="margin-top:10px" onclick="confirmChain2()">이 조합으로 3명 모두 교체 확정</button>';
   document.getElementById('swResult').innerHTML=h;
