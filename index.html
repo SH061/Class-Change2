@@ -169,16 +169,6 @@ td.progressable:hover{outline:2px solid var(--primary-active);outline-offset:-2p
 .progEntry.today{background:#fbe9e4;border-color:#e3a893}
 .progEntry .meta{font-size:12px;color:var(--muted);margin-bottom:4px}
 .progEntry .body{white-space:pre-line}
-/* 고치기(마스터코드 전용 정적 문구 편집) */
-.editableEl{outline:1px dashed #c9b8a8;outline-offset:2px;cursor:text}
-body.editing-pick .editableEl,body.editing-pick [onclick],body.editing-pick button{cursor:crosshair!important}
-#editToolbar{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:500;background:#232120;color:#faf9f5;
-  border-radius:12px;padding:6px 10px;display:flex;align-items:center;gap:4px;box-shadow:0 10px 28px rgba(0,0,0,.35);
-  flex-wrap:wrap;max-width:94vw}
-#editToolbar button{background:none;border:0;color:inherit;font-size:14px;padding:6px 8px;border-radius:8px;cursor:pointer}
-#editToolbar button:hover{background:rgba(255,255,255,.14)}
-#editToolbar .editSep{width:1px;align-self:stretch;background:rgba(255,255,255,.25);margin:0 4px}
-#editToolbar .editHint{font-size:12px;color:#f0c9b8;margin-left:8px}
 .noticeItem{border-bottom:1px solid var(--hairline);padding:16px 0}
 .noticeItem:first-of-type{padding-top:14px}
 .noticeItem:last-of-type{border-bottom:0}
@@ -414,7 +404,6 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
      전혀 영향을 주지 않습니다. PC 쪽 스타일은 위쪽 규칙 그대로 유지됩니다.
    ================================================================ */
 @media (max-width:1024px){
-  .pcOnlyInline{display:none!important}
   /* 진도표 등록줄: 날짜칩+저장 한 줄, 입력창은 그 아래 한 줄 전체 */
   .progAddRow{flex-wrap:wrap}
   .progAddRow input[type=date],.progAddRow input[type=number]{flex:0 0 auto}
@@ -625,7 +614,6 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
 <div id="app" hidden>
   <header class="top"><div class="wrap">
     <span class="brand" id="brandText"></span>
-    <button id="editModeTab" class="btn sm pcOnlyInline" style="background:transparent;color:#faf9f5;border:1px solid #55524c;margin-left:12px" onclick="toggleEditMode()" hidden>✎ 고치기</button>
     <span style="flex:1"></span>
     <div class="who"><span><b id="meName"></b> 선생님</span>
       <button class="btn sm" style="background:transparent;color:#faf9f5;border:1px solid #55524c" onclick="logout()">이름 전환</button>
@@ -756,7 +744,7 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
     <div class="noticeModal" id="calModal" onclick="if(event.target===this)closeCalModal()">
       <div class="sheet cal-sheet" style="position:relative">
         <button class="x" onclick="closeCalModal()">✕</button>
-        <div class="calTitleRow" style="display:flex;align-items:center;gap:10px">
+        <div class="calTitleRow" style="display:flex;align-items:center;gap:10px;padding-right:40px">
           <button type="button" class="btn sm ghost calNavDesktop" onclick="calNav(-1)">‹ 이전달</button>
           <h2 style="text-align:center;flex:1;margin:0" id="calModalTitle">학사일정</h2>
           <button type="button" class="btn sm ghost calNavDesktop" onclick="calNav(1)">다음달 ›</button>
@@ -868,9 +856,9 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
     <section id="view-jilji" hidden>
       <div class="jbar card noprint">
         <span style="flex:1"></span>
-        <h2 style="font-size:26px;text-align:center;margin:0">수업교체일지</h2>
+        <h2 style="font-size:34px;text-align:center;margin:0">수업교체일지</h2>
         <span style="flex:1;display:flex;justify-content:flex-end">
-          <button class="btn ghost sm" onclick="printJilji()">인쇄 (A4 가로)</button>
+          <button class="btn ghost sm" style="font-size:15.6px;padding:7.8px 14.3px" onclick="printJilji()">인쇄 (A4 가로)</button>
         </span>
       </div>
       <div id="jiljiSelWrap"></div>
@@ -906,7 +894,7 @@ table.grid-ed input,table.grid-ed select{width:100%;padding:5px 6px}
 
 <script>
 /* ===== 저장 유틸 ===== */
-const LS={cfg:'dgs_cfg_v3',user:'dgs_user_v3',changes:'dgs_changes_v3',academic:'dgs_academic_v3',form:'dgs_form_v3',notices:'dgs_notices_v1',code:'dgs_code_v1',master:'dgs_master_v1'};
+const LS={cfg:'dgs_cfg_v3',user:'dgs_user_v3',changes:'dgs_changes_v3',academic:'dgs_academic_v3',form:'dgs_form_v3',notices:'dgs_notices_v1',code:'dgs_code_v1'};
 const _mem={};
 function lsGet(k){try{const v=localStorage.getItem(k);return v==null?(_mem[k]??null):v}catch(e){return _mem[k]??null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){_mem[k]=v}}
@@ -1356,7 +1344,7 @@ function boot(){
   ACTIVE_APPS_URL=appsUrl;
   fetchAppsScript(appsUrl).then(j=>{
     buildModel(j.rows,j.teachers||c.te);applyRemoteSync(j);
-    SCHOOL_CODE=j.schoolCode||'12345';MASTER_CODE=j.masterCode||'99999';PROGRESS_ALLOW_LIST=j.progressAllow||[];
+    SCHOOL_CODE=j.schoolCode||'12345';PROGRESS_ALLOW_LIST=j.progressAllow||[];
     afterLoad();
   }).catch(showErr);
 }
@@ -1364,7 +1352,7 @@ function getCfg(){try{return JSON.parse(lsGet(LS.cfg))||{}}catch(e){return{}}}
 function setCfg(c){lsSet(LS.cfg,JSON.stringify(c))}
 async function fetchCSVUrl(url){const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);return parseCSV(await r.text())}
 let ACTIVE_APPS_URL=null,REMOTE_HOMEROOMS=[];
-let SCHOOL_CODE='12345',MASTER_CODE='99999',PROGRESS_ALLOW_LIST=[],PROGRESS_ALLOWED=false,MASTER_MODE=false;
+let SCHOOL_CODE='12345',PROGRESS_ALLOW_LIST=[],PROGRESS_ALLOWED=false;
 async function sbGetConfig(){
   const{data,error}=await sb.from('config').select('key,value');
   if(error)throw error;
@@ -1437,9 +1425,8 @@ async function fetchAppsScript(url){
   const homerooms=(cfg['담임명단']||'').split(',').map(s=>s.trim()).filter(Boolean);
   const weeks=Number(cfg['표시주수'])||null;
   const schoolCode=cfg['학교코드']||'12345';
-  const masterCode=cfg['마스터코드']||'99999';
   const progressAllow=(cfg['진도표접근허용']||'').split(',').map(s=>s.trim()).filter(Boolean);
-  return{rows,academic,notices,homerooms,teachers,weeks,swaps,schoolCode,masterCode,progressAllow};
+  return{rows,academic,notices,homerooms,teachers,weeks,swaps,schoolCode,progressAllow};
 }
 // 앱스크립트에서 받아온 학사일정/안내/담임명단을 이 브라우저의 화면에도 그대로 반영(단방향: 시트→화면).
 // 학사일정·안내는 1학년 담임이 addCal()/addNotice()로 등록하면 시트에 저장되고, 그 결과가 다시 여기로 돌아와 반영됨.
@@ -1529,7 +1516,6 @@ async function postAppsScript(url,body){
 function showErr(e){document.getElementById('loginBody').innerHTML='<p class="err">불러오기 실패: '+e.message+'</p>'}
 function afterLoad(){
   if(lsGet(LS.code)!=='1'){renderCodeGate();return}
-  if(lsGet(LS.master)==='1')MASTER_MODE=true;
   proceedAfterCode();
 }
 function proceedAfterCode(){
@@ -1549,8 +1535,7 @@ function renderCodeGate(){
 }
 function submitSchoolCode(){
   const v=(document.getElementById('schoolCodeInput').value||'').trim();
-  if(v&&v===String(MASTER_CODE||'').trim()){lsSet(LS.code,'1');lsSet(LS.master,'1');MASTER_MODE=true;proceedAfterCode()}
-  else if(v&&v===String(SCHOOL_CODE||'').trim()){lsSet(LS.code,'1');proceedAfterCode()}
+  if(v&&v===String(SCHOOL_CODE||'').trim()){lsSet(LS.code,'1');proceedAfterCode()}
   else document.getElementById('codeErr').textContent='코드가 올바르지 않습니다.';
 }
 function updatePubTitle(){
@@ -1574,14 +1559,13 @@ function doLogin(){
   if(pl)pl.innerHTML='<div class="card" style="text-align:center;padding:80px 24px"><h2 style="font-size:36px;font-weight:800;margin:0">선생님 로그인 중입니다.</h2></div>';
   setTimeout(enterApp,150);
 }
-function logout(){lsDel(LS.user);lsDel(LS.code);lsDel(LS.master);location.reload()}
+function logout(){lsDel(LS.user);lsDel(LS.code);location.reload()}
 function renderBrand(){
   const f=getForm();const el=document.getElementById('brandText');if(!el)return;
   el.innerHTML='<b>'+f.school+'</b> · '+(f.semester||'')+' 수업교체 시스템';
 }
 function enterApp(){
   PROGRESS_ALLOWED=PROGRESS_ALLOW_LIST.includes(ME);
-  document.getElementById('editModeTab').hidden=!MASTER_MODE;
   document.getElementById('login').hidden=true;document.getElementById('app').hidden=false;
   document.getElementById('meName').textContent=ME;document.getElementById('ttWho').textContent=ME;
   document.getElementById('navMgrBtn').hidden=!mgrAccessOK();
@@ -2817,36 +2801,59 @@ function checkTodayNotice(){
 }
 
 /* ===== 수업교체일지 (원본 서식, A4 세로) ===== */
-let JILJI_SEL=null;
-function renderJilji(){
+let JILJI_SEL=null,JILJI_DATE=null;
+function jiljiMine(){
   const who=SWACTOR||ME;
   // 내가 신청한 것뿐 아니라, 내가 시작한(initiator) 맞교체·연쇄이동은 관련된 다른 선생님 몫도 함께 뽑을 수 있어야 함.
   // 다만 같은 교체를 양쪽에서 두 번 기록해둔 것(primary:false는 반대편 사본)은 내 쪽에서 중복으로 세지 않음.
   // 내가 다른 선생님 결강 시간에 대신 보강을 들어간 경우(cover.teacher===나)도, 내가 나중에 내 이름으로
   // 서류를 뽑아 제출/보관하고 싶을 수 있어서 목록에 함께 포함시킴 (인쇄 시 "교사" 란도 내 이름으로 나감).
-  const mine=Store.all().filter(x=>x.applicant===who||(x.initiator===who&&x.primary!==false)||(x.cover&&x.cover.teacher===who));
+  return Store.all().filter(x=>x.applicant===who||(x.initiator===who&&x.primary!==false)||(x.cover&&x.cover.teacher===who));
+}
+function renderJilji(){
+  const who=SWACTOR||ME;
+  const mine=jiljiMine();
   renderJiljiSelector(mine);
-  const use=JILJI_SEL?mine.filter(x=>JILJI_SEL.has(x.id)):mine;
+  // 날짜를 아직 안 골랐으면(또는 선택된 게 없으면) 인쇄 미리보기에도 아무것도 안 뜨게 함 —
+  // 안 그러면 처음 들어왔을 때 전체가 다 인쇄 대상으로 보여서 목록이 너무 길어짐.
+  const use=(JILJI_SEL&&JILJI_SEL.size)?mine.filter(x=>JILJI_SEL.has(x.id)):[];
   const wrap=document.getElementById('jiljiWrap');
   const hint=who!==ME?'<p class="muted noprint" style="margin-bottom:10px">지금 <b>'+who+'</b> 선생님 기준으로 보고 있습니다 ([수업교체/보강] 탭에서 "다른 교사 시간표 변경"으로 바꿀 수 있습니다).</p>':'';
-  jiljiInto(wrap,use,mine.length?'선택된 내역이 없습니다. 위에서 인쇄할 건을 선택하세요.':'저장된 수업교체 내역이 없습니다.',who);
+  jiljiInto(wrap,use,mine.length?'위에서 날짜를 고르고 인쇄할 건을 선택하세요.':'저장된 수업교체 내역이 없습니다.',who);
   if(hint)wrap.innerHTML=hint+wrap.innerHTML;
 }
 function renderJiljiSelector(mine){
   const el=document.getElementById('jiljiSelWrap');if(!el)return;
-  if(!mine.length){el.innerHTML='';JILJI_SEL=null;return}
-  if(!JILJI_SEL)JILJI_SEL=new Set(mine.map(x=>x.id));
+  if(!mine.length){el.innerHTML='';JILJI_SEL=null;JILJI_DATE=null;return}
+  if(!JILJI_SEL)JILJI_SEL=new Set();
   else{const ids=new Set(mine.map(x=>x.id));[...JILJI_SEL].forEach(id=>{if(!ids.has(id))JILJI_SEL.delete(id)})}
+  const dates=[...new Set(mine.map(x=>x.absent.date).filter(Boolean))].sort();
+  if(JILJI_DATE&&!dates.includes(JILJI_DATE))JILJI_DATE=null;
+  const dayed=JILJI_DATE?mine.filter(x=>x.absent.date===JILJI_DATE):[];
+  const who=SWACTOR||ME;
   el.innerHTML='<div class="card noprint" style="margin-bottom:14px"><h3 style="font-size:13px;margin-bottom:8px">인쇄할 건 선택 ('+JILJI_SEL.size+' / '+mine.length+')</h3>'+
-    mine.map(r=>{const a=r.absent,who=SWACTOR||ME;
-      return '<label class="jsel"><input type="checkbox" '+(JILJI_SEL.has(r.id)?'checked':'')+' onchange="toggleJiljiSel(\''+r.id+'\',this.checked)">'+
-        (r.applicant!==who?'<b>'+r.applicant+'</b> · ':'')+
-        (a.date?dotShort(dparse(a.date)):'')+' '+a.grade+'-'+a.cls+' '+a.period+'교시 '+a.subject+' — '+(r.type==='swap'?'맞교체':'보강')+' · '+r.cover.teacher+'</label>';
-    }).join('')+
-    '<div class="row" style="margin-top:8px"><button class="btn sm ghost" onclick="jiljiSelAll(true)">전체 선택</button><button class="btn sm ghost" onclick="jiljiSelAll(false)">전체 해제</button></div></div>';
+    '<div class="field" style="max-width:240px"><label>날짜 선택</label><select onchange="setJiljiDate(this.value)">'+
+    '<option value="">-- 날짜를 선택하세요 --</option>'+
+    dates.map(d=>'<option value="'+d+'" '+(d===JILJI_DATE?'selected':'')+'>'+dotFull(dparse(d))+'</option>').join('')+
+    '</select></div>'+
+    (JILJI_DATE?
+      dayed.map(r=>{const a=r.absent;
+        return '<label class="jsel"><input type="checkbox" '+(JILJI_SEL.has(r.id)?'checked':'')+' onchange="toggleJiljiSel(\''+r.id+'\',this.checked)">'+
+          (r.applicant!==who?'<b>'+r.applicant+'</b> · ':'')+
+          (a.date?dotShort(dparse(a.date)):'')+' '+a.grade+'-'+a.cls+' '+a.period+'교시 '+a.subject+' — '+(r.type==='swap'?'맞교체':'보강')+' · '+r.cover.teacher+'</label>';
+      }).join('')+
+      '<div class="row" style="margin-top:8px"><button class="btn sm ghost" onclick="jiljiSelAll(true)">이 날짜 전체 선택</button><button class="btn sm ghost" onclick="jiljiSelAll(false)">이 날짜 전체 해제</button></div>'
+      :'<p class="muted" style="margin-top:8px">날짜를 선택하면 그 날짜의 교체·보강 건이 여기 나옵니다.</p>')+
+    '</div>';
 }
-function toggleJiljiSel(id,on){if(on)JILJI_SEL.add(id);else JILJI_SEL.delete(id);renderJilji()}
-function jiljiSelAll(on){const who=SWACTOR||ME;const mine=Store.all().filter(x=>x.applicant===who||(x.initiator===who&&x.primary!==false)||(x.cover&&x.cover.teacher===who));JILJI_SEL=on?new Set(mine.map(x=>x.id)):new Set();renderJilji()}
+function setJiljiDate(d){JILJI_DATE=d||null;renderJilji()}
+function toggleJiljiSel(id,on){if(!JILJI_SEL)JILJI_SEL=new Set();if(on)JILJI_SEL.add(id);else JILJI_SEL.delete(id);renderJilji()}
+function jiljiSelAll(on){
+  const dayed=JILJI_DATE?jiljiMine().filter(x=>x.absent.date===JILJI_DATE):[];
+  if(!JILJI_SEL)JILJI_SEL=new Set();
+  dayed.forEach(r=>{if(on)JILJI_SEL.add(r.id);else JILJI_SEL.delete(r.id)});
+  renderJilji();
+}
 function jiljiInto(wrap,records,emptyMsg,viewer){
   if(!records.length){wrap.innerHTML='<p class="muted">'+emptyMsg+'</p>';return}
   // 내가(viewer) 시작한 맞교체·연쇄이동은, 실제로 몇 명이 얽혔든 내가 처리한 일이므로
@@ -3120,188 +3127,7 @@ function buildSampleData(){
    ['5','정해린','1-6','1-5','','','1-2','','1-1','','1-2','','','1-4','','','1-5','','','1-3','','','','','','','','','','','','','','','','','','']];
   buildModel(tt,te);
 }
-/* ===== 고치기: 화면의 고정 글자(제목·안내문구·버튼 이름 등)를 직접 수정하는 모드 =====
-   시간표·수업교체·학사일정처럼 매번 다시 그려지는(JS로 렌더링되는) 데이터 영역은 새로고침하면
-   고친 내용이 사라지므로 대상에서 뺌 — 데이터와 무관한 고정 문구만 안전하게 고칠 수 있음.
-   마스터코드로 들어온 경우에만(MASTER_MODE) 헤더의 "고치기" 버튼이 보임. */
-const EDIT_NOEDIT_IDS=['ttWrap','swGrid','swResult','jiljiWrap','jiljiSelWrap','mgrBody','allTTWrap2','clsTTWrap2',
-  'noticeList','chgList','calWrap','jscale','loginBody','progList','pbarTT','pbarSW','pbarClsTT','ttSidebar',
-  'ttBanner','editToolbar','acTable'];
-const EDIT_STORAGE_KEY='dgs_edit_'+decodeURIComponent(location.pathname.split('/').filter(Boolean).pop()||'index.html');
-let EDIT_ON=false,EDIT_HISTORY=[],EDIT_FUTURE=[];
-function editIsNoEditZone(el){let n=el;while(n){if(n.id&&EDIT_NOEDIT_IDS.includes(n.id))return true;n=n.parentElement}return false}
-function editPath(el,root){const path=[];let n=el;while(n&&n!==root){const p=n.parentElement;if(!p)break;path.unshift([...p.children].indexOf(n));n=p}return path.join('.')}
-function editPathToEl(root,path){let n=root;for(const idx of path.split('.').map(Number)){if(!n||!n.children||!n.children[idx])return null;n=n.children[idx]}return n}
-function editCollectTargets(root){
-  const out=[];
-  root.querySelectorAll('*').forEach(el=>{
-    if(editIsNoEditZone(el))return;
-    if(['SCRIPT','STYLE','INPUT','SELECT','TEXTAREA','SVG','PATH','OPTION','TABLE','THEAD','TBODY','TR','TD','TH'].includes(el.tagName))return;
-    if(el.closest('#editToolbar'))return;
-    // 순수 leaf(자식 태그 없음)뿐 아니라, <h2>제목<span>...</span></h2>처럼 글자와 태그가
-    // 섞여 있는 경우도 그 글자를 고칠 수 있어야 하므로, "바로 밑에 글자가 직접 있는" 요소는 포함
-    const hasDirectText=[...el.childNodes].some(n=>n.nodeType===3&&n.textContent.trim());
-    if(!hasDirectText&&el.children.length)return;
-    if(!el.textContent.trim())return;
-    out.push(el);
-  });
-  return out;
-}
-function editRoots(){return['login','app'].map(id=>document.getElementById(id)).filter(Boolean)}
-function toggleEditMode(){if(!MASTER_MODE)return;EDIT_ON=!EDIT_ON;document.body.classList.toggle('editing-on',EDIT_ON);if(EDIT_ON)editEnter();else editExit()}
-function editEnter(){
-  editBuildToolbar();
-  document.addEventListener('click',editBlockClicks,true);
-  editRoots().forEach(root=>{
-    editCollectTargets(root).forEach(el=>{
-      el.setAttribute('contenteditable','true');
-      el.classList.add('editableEl');
-      el.dataset.eid=root.id+':'+editPath(el,root);
-      el.addEventListener('input',editOnInput);
-    });
-  });
-}
-function editExit(){
-  document.removeEventListener('click',editBlockClicks,true);
-  document.removeEventListener('click',editPickClick,true);
-  document.body.classList.remove('editing-pick');EDIT_PICK_CB=null;
-  document.querySelectorAll('.editableEl').forEach(el=>{el.removeAttribute('contenteditable');el.classList.remove('editableEl');el.removeEventListener('input',editOnInput)});
-  const bar=document.getElementById('editToolbar');if(bar)bar.remove();
-}
-function editBlockClicks(e){
-  if(e.target.closest('#editToolbar'))return;
-  // 편집 가능한 글자라도 onclick 기능이 붙어있는 요소(탭 버튼 등)는 그 기능이 같이 실행되면 안 되므로
-  // contenteditable 여부와 상관없이 항상 막음 — 글자를 고치는 데는 click의 기본 동작이 필요 없음
-  const el=e.target.closest('[onclick],button,a,select,label');
-  if(el){e.preventDefault();e.stopPropagation()}
-}
-let editSaveTimer=null;
-function editOnInput(){editPushHistory();clearTimeout(editSaveTimer);editSaveTimer=setTimeout(editSaveToStorage,400)}
-function editSnapshot(){
-  const snap={text:{},hidden:[]};
-  document.querySelectorAll('.editableEl').forEach(el=>snap.text[el.dataset.eid]=el.innerHTML);
-  editRoots().forEach(root=>{
-    root.querySelectorAll('[data-edit-hidden="1"]').forEach(el=>snap.hidden.push(root.id+':'+editPath(el,root)));
-  });
-  return snap;
-}
-function editPushHistory(){EDIT_HISTORY.push(editSnapshot());if(EDIT_HISTORY.length>50)EDIT_HISTORY.shift();EDIT_FUTURE=[]}
-function editApplySnap(snap){
-  document.querySelectorAll('.editableEl').forEach(el=>{if(snap.text[el.dataset.eid]!==undefined)el.innerHTML=snap.text[el.dataset.eid]});
-  editRoots().forEach(root=>{
-    root.querySelectorAll('[data-edit-hidden="1"]').forEach(el=>{el.style.display='';el.removeAttribute('data-edit-hidden')});
-  });
-  (snap.hidden||[]).forEach(key=>{
-    const idx=key.indexOf(':'),rootId=key.slice(0,idx),path=key.slice(idx+1);
-    const root=document.getElementById(rootId);if(!root)return;
-    const el=editPathToEl(root,path);
-    if(el){el.style.display='none';el.setAttribute('data-edit-hidden','1')}
-  });
-}
-function editUndo(){if(!EDIT_HISTORY.length)return;EDIT_FUTURE.push(editSnapshot());editApplySnap(EDIT_HISTORY.pop());editSaveToStorage()}
-function editRedo(){if(!EDIT_FUTURE.length)return;EDIT_HISTORY.push(editSnapshot());editApplySnap(EDIT_FUTURE.pop());editSaveToStorage()}
-function editSaveToStorage(){
-  const data={text:{},hidden:[]};
-  document.querySelectorAll('.editableEl').forEach(el=>data.text[el.dataset.eid]=el.innerHTML);
-  document.querySelectorAll('[data-edit-hidden="1"]').forEach(el=>{
-    const root=el.closest('#login')||el.closest('#app');if(!root)return;
-    data.hidden.push(root.id+':'+editPath(el,root));
-  });
-  lsSet(EDIT_STORAGE_KEY,JSON.stringify(data));
-}
-function editLoadFromStorage(){
-  let data;try{data=JSON.parse(lsGet(EDIT_STORAGE_KEY)||'{}')}catch(e){data={}}
-  if(data.text){
-    editRoots().forEach(root=>{
-      editCollectTargets(root).forEach(el=>{
-        const eid=root.id+':'+editPath(el,root);
-        if(data.text[eid]!==undefined)el.innerHTML=data.text[eid];
-      });
-    });
-  }
-  (data.hidden||[]).forEach(key=>{
-    const idx=key.indexOf(':'),rootId=key.slice(0,idx),path=key.slice(idx+1);
-    const root=document.getElementById(rootId);if(!root)return;
-    const el=editPathToEl(root,path);
-    if(el){el.style.display='none';el.setAttribute('data-edit-hidden','1')}
-  });
-}
-function editDeletePart(){
-  editSetPickMode('삭제할 부분을 클릭하세요.',el=>{
-    editPushHistory();
-    el.style.display='none';el.setAttribute('data-edit-hidden','1');
-    editSaveToStorage();
-  });
-}
-function editDeleteSection(){
-  editSetPickMode('지울 구획(카드/섹션) 안의 아무 곳이나 클릭하세요.',el=>{
-    const sec=el.closest('.card,.sec,section')||el;
-    editPushHistory();
-    sec.style.display='none';sec.setAttribute('data-edit-hidden','1');
-    editSaveToStorage();
-  });
-}
-let EDIT_PICK_CB=null;
-function editSetPickMode(msg,cb){
-  EDIT_PICK_CB=cb;
-  const bar=document.getElementById('editToolbar');if(bar)bar.querySelector('.editHint').textContent=msg;
-  document.body.classList.add('editing-pick');
-}
-function editPickClick(e){
-  if(!EDIT_PICK_CB)return;
-  if(e.target.closest('#editToolbar'))return;
-  e.preventDefault();e.stopPropagation();
-  EDIT_PICK_CB(e.target);
-  EDIT_PICK_CB=null;
-  document.body.classList.remove('editing-pick');
-  const bar=document.getElementById('editToolbar');if(bar)bar.querySelector('.editHint').textContent='';
-}
-function editResetAll(){
-  appConfirm('이 화면에서 고친 내용을 전부 되돌릴까요? (되돌린 뒤에는 취소할 수 없습니다)').then(ok=>{
-    if(!ok)return;
-    lsDel(EDIT_STORAGE_KEY);location.reload();
-  });
-}
-function editExec(cmd,val){document.execCommand(cmd,false,val||null)}
-function editInsertImage(){
-  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';
-  inp.onchange=()=>{
-    const f=inp.files[0];if(!f)return;
-    const rd=new FileReader();
-    rd.onload=()=>{editExec('insertImage',rd.result)};
-    rd.readAsDataURL(f);
-  };
-  inp.click();
-}
-function editBuildToolbar(){
-  if(document.getElementById('editToolbar'))return;
-  const bar=document.createElement('div');bar.id='editToolbar';
-  bar.innerHTML=`
-    <button title="한 걸음 되돌리기" onclick="editUndo()">↺</button>
-    <button title="다시" onclick="editRedo()">↻</button>
-    <span class="editSep"></span>
-    <button title="글자 크게" onclick="editExec('fontSize',5)">가+</button>
-    <button title="글자 작게" onclick="editExec('fontSize',2)">가-</button>
-    <button title="굵게" onclick="editExec('bold')"><b>B</b></button>
-    <button title="형광펜" onclick="editExec('hiliteColor','#fff2a8')">🖍</button>
-    <button title="검정" onclick="editExec('foreColor','#181715')" style="color:#181715">●</button>
-    <button title="빨강" onclick="editExec('foreColor','#c0392b')" style="color:#c0392b">●</button>
-    <button title="파랑" onclick="editExec('foreColor','#2456a8')" style="color:#2456a8">●</button>
-    <button title="초록" onclick="editExec('foreColor','#2f7a4f')" style="color:#2f7a4f">●</button>
-    <button title="가운데 정렬" onclick="editExec('justifyCenter')">≡</button>
-    <button title="사진 넣기" onclick="editInsertImage()">🖼</button>
-    <span class="editSep"></span>
-    <button title="이 부분 지우기" onclick="editDeletePart()">이 부분 지우기</button>
-    <button title="이 장 지우기" onclick="editDeleteSection()">이 장 지우기</button>
-    <button title="전체 되돌리기" onclick="editResetAll()">전체 되돌리기</button>
-    <span class="editHint"></span>
-    <button title="편집 끝" onclick="toggleEditMode()" style="margin-left:auto">완료 ✕</button>
-  `;
-  document.body.appendChild(bar);
-  document.addEventListener('click',editPickClick,true);
-}
 window.addEventListener('resize',()=>{if(!document.getElementById('view-jilji').hidden)fitJilji()});
-editLoadFromStorage();
 boot();
 </script>
 </body>
