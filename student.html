@@ -2367,12 +2367,17 @@ function renderClassTTGeneric(selId,wrapId){
     h+='</tr>';
   }
   h+='</tbody></table>';
-  const wrap=document.getElementById(wrapId);if(wrap){wrap.innerHTML=h;fitClsCellText(wrap)}
+  const wrap=document.getElementById(wrapId);if(wrap){wrap.innerHTML=h;fitClsCellText(wrap);
+    // 학생용 페이지는 처음 접속 시 폰트(Pretendard)가 아직 안 불러와진 상태에서 글자 크기를 재는 경우가 있어,
+    // 폰트 로딩이 끝난 뒤 실제 너비 기준으로 한 번 더 다시 맞춰줌(안 그러면 글자가 잘려 보임).
+    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>fitClsCellText(wrap));
+  }
 }
 // 모바일에서 칸이 좁아 과목명이 잘리면(말줄임표) 안 보이니, 그 칸 안에 다 들어올 때까지 글자를 조금씩 줄임
 function fitClsCellText(container){
   if(!window.matchMedia('(max-width:600px)').matches)return;
   container.querySelectorAll('table.tt.clsTT td .cl').forEach(el=>{
+    el.style.fontSize='';
     let size=parseFloat(getComputedStyle(el).fontSize),guard=0;
     while(el.scrollWidth>el.clientWidth+0.5&&size>6.5&&guard<12){size-=0.5;el.style.fontSize=size+'px';guard++}
   });
