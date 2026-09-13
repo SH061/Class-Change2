@@ -2491,6 +2491,16 @@ function appAlert(msg,title){
     document.getElementById('mOk').onclick=()=>{document.getElementById('modal').hidden=true;resolve()};
   });
 }
+// 확인창(appConfirm/appAlert/openModal)이 떠 있을 때 Enter로 바로 "확인"을 누른 것처럼 처리 —
+// 여러 줄 입력하는 textarea 안에서는 줄바꿈이 우선이어야 하므로 그때는 제외함.
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;
+  const modal=document.getElementById('modal');
+  if(modal&&!modal.hidden&&document.activeElement.tagName!=='TEXTAREA'){
+    e.preventDefault();
+    document.getElementById('mOk').click();
+  }
+});
 function val(id){return (document.getElementById(id)||{}).value||''}
 function reasonFields(){return '<div class="field"><label>수업변경 사유</label><input id="mReason" value="개인사정"></div>'+
   '<div class="field"><label>작성일</label><input id="mWrite" type="date" value="'+iso(new Date())+'"></div>'}
@@ -2801,7 +2811,7 @@ function checkTodayNotice(){
 }
 
 /* ===== 수업교체일지 (원본 서식, A4 세로) ===== */
-let JILJI_SEL=null,JILJI_DATES=new Set();
+let JILJI_SEL=null,JILJI_START=null,JILJI_END=null;
 function jiljiMine(){
   const who=SWACTOR||ME;
   // 내가 신청한 것뿐 아니라, 내가 시작한(initiator) 맞교체·연쇄이동은 관련된 다른 선생님 몫도 함께 뽑을 수 있어야 함.
@@ -2824,32 +2834,34 @@ function renderJilji(){
 }
 function renderJiljiSelector(mine){
   const el=document.getElementById('jiljiSelWrap');if(!el)return;
-  if(!mine.length){el.innerHTML='';JILJI_SEL=null;JILJI_DATES=new Set();return}
+  if(!mine.length){el.innerHTML='';JILJI_SEL=null;JILJI_START=null;JILJI_END=null;return}
   if(!JILJI_SEL)JILJI_SEL=new Set();
   else{const ids=new Set(mine.map(x=>x.id));[...JILJI_SEL].forEach(id=>{if(!ids.has(id))JILJI_SEL.delete(id)})}
-  const dates=[...new Set(mine.map(x=>x.absent.date).filter(Boolean))].sort();
-  [...JILJI_DATES].forEach(d=>{if(!dates.includes(d))JILJI_DATES.delete(d)});
-  const dayed=mine.filter(x=>JILJI_DATES.has(x.absent.date)).sort((a,b)=>(a.absent.date||'').localeCompare(b.absent.date||''));
+  const dayed=(JILJI_START&&JILJI_END)?mine.filter(x=>x.absent.date&&x.absent.date>=JILJI_START&&x.absent.date<=JILJI_END)
+    .sort((a,b)=>(a.absent.date||'').localeCompare(b.absent.date||'')):[];
   const who=SWACTOR||ME;
   el.innerHTML='<div class="card noprint" style="margin-bottom:14px"><h3 style="font-size:13px;margin-bottom:8px">인쇄할 건 선택 ('+JILJI_SEL.size+' / '+mine.length+')</h3>'+
-    '<div class="field"><label>날짜 선택 (여러 날짜 함께 볼 수 있음)</label>'+
-    '<div class="row" style="flex-wrap:wrap;gap:6px">'+
-    dates.map(d=>'<label class="jsel" style="display:inline-flex;width:auto"><input type="checkbox" '+(JILJI_DATES.has(d)?'checked':'')+' onchange="toggleJiljiDate(\''+d+'\',this.checked)"> '+dotFull(dparse(d))+'</label>').join('')+
+    '<div class="field"><label>기간 선택</label>'+
+    '<div style="display:flex;gap:6px;align-items:center;max-width:360px">'+
+    '<input id="jiljiStart" type="date" style="flex:1" value="'+(JILJI_START||'')+'" onchange="setJiljiRange()">'+
+    '<span class="muted">~</span>'+
+    '<input id="jiljiEnd" type="date" style="flex:1" value="'+(JILJI_END||'')+'" onchange="setJiljiRange()">'+
     '</div></div>'+
-    (dayed.length?
-      dayed.map(r=>{const a=r.absent;
+    ((JILJI_START&&JILJI_END)?
+      (dayed.length?dayed.map(r=>{const a=r.absent;
         return '<label class="jsel"><input type="checkbox" '+(JILJI_SEL.has(r.id)?'checked':'')+' onchange="toggleJiljiSel(\''+r.id+'\',this.checked)">'+
           (r.applicant!==who?'<b>'+r.applicant+'</b> · ':'')+
           (a.date?dotShort(dparse(a.date)):'')+' '+a.grade+'-'+a.cls+' '+a.period+'교시 '+a.subject+' — '+(r.type==='swap'?'맞교체':'보강')+' · '+r.cover.teacher+'</label>';
-      }).join('')+
-      '<div class="row" style="margin-top:8px"><button class="btn sm ghost" onclick="jiljiSelAll(true)">선택한 날짜 전체 선택</button><button class="btn sm ghost" onclick="jiljiSelAll(false)">선택한 날짜 전체 해제</button></div>'
-      :'<p class="muted" style="margin-top:8px">날짜를 선택하면 그 날짜의 교체·보강 건이 여기 나옵니다.</p>')+
+      }).join(''):'<p class="muted" style="margin-top:8px">이 기간에는 교체·보강 건이 없습니다.</p>')+
+      '<div class="row" style="margin-top:8px"><button class="btn sm ghost" onclick="jiljiSelAll(true)">이 기간 전체 선택</button><button class="btn sm ghost" onclick="jiljiSelAll(false)">이 기간 전체 해제</button></div>'
+      :'<p class="muted" style="margin-top:8px">시작일과 종료일을 고르면 그 기간의 교체·보강 건이 여기 나옵니다.</p>')+
     '</div>';
 }
-function toggleJiljiDate(d,on){if(on)JILJI_DATES.add(d);else JILJI_DATES.delete(d);renderJilji()}
+function setJiljiRange(){JILJI_START=val('jiljiStart')||null;JILJI_END=val('jiljiEnd')||null;renderJilji()}
 function toggleJiljiSel(id,on){if(!JILJI_SEL)JILJI_SEL=new Set();if(on)JILJI_SEL.add(id);else JILJI_SEL.delete(id);renderJilji()}
 function jiljiSelAll(on){
-  const dayed=jiljiMine().filter(x=>JILJI_DATES.has(x.absent.date));
+  if(!(JILJI_START&&JILJI_END))return;
+  const dayed=jiljiMine().filter(x=>x.absent.date&&x.absent.date>=JILJI_START&&x.absent.date<=JILJI_END);
   if(!JILJI_SEL)JILJI_SEL=new Set();
   dayed.forEach(r=>{if(on)JILJI_SEL.add(r.id);else JILJI_SEL.delete(r.id)});
   renderJilji();
