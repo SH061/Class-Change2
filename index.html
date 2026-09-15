@@ -1816,7 +1816,10 @@ function ttTable(name,opts){
   }
   head+='<tr><th><span class="pnum">교시</span></th>';
   weeks.forEach(w=>{
-    for(let d=0;d<5;d++)head+='<th class="'+(multi&&d===0?'wkstart':'')+'"><span class="pnum">'+DAYNAMES[d]+'('+md(dayDateAbs(w,d))+')</span></th>';
+    // 여러 주를 한 번에 보여줄 땐(multi) 날짜가 위 주간 구간 줄("9/14~9/18")에 이미 나와 있으므로
+    // 요일 칸에 또 "(9/14)"까지 붙이면 칸이 좁아졌을 때(주로 2~3주 보기) 글자가 넘쳐 옆 칸과
+    // 겹쳐 보임 — multi일 땐 요일만 짧게 표시.
+    for(let d=0;d<5;d++)head+='<th class="'+(multi&&d===0?'wkstart':'')+'"><span class="pnum">'+(multi?DAYNAMES[d]:DAYNAMES[d]+'('+md(dayDateAbs(w,d))+')')+'</span></th>';
   });
   head+='</tr></thead>';
   let h='<table class="tt'+(multi?' ttMulti':'')+'" data-weeks="'+weeks.length+'">'+colgroup+head+'<tbody>';
