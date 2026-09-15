@@ -258,11 +258,22 @@ td.progressable:hover{outline:2px solid var(--primary-active);outline-offset:-2p
 .dcExcl b{font-size:16.25px}
 .dcExcl div{padding:4px 0}
 /* 연쇄 이동 미리보기: 3명 시간표를 세로가 아니라 가로로 나란히 */
-/* 연쇄 이동 미리보기의 두 교사 표 — 예전엔 항상 380px 고정 축소판이었는데, 이제 #swGrid와 같은
-   .swTierGrid 규격(칸 높이 96px 고정)을 그대로 쓰고 가로만 .chainrow가 나눠준 폭에 맞춰 좁아짐. */
+/* 연쇄 이동 미리보기의 두 교사 표 — #swGrid와 같은 .swTierGrid 글자 크기를 그대로 쓰면 칸이
+   여러 개로 나뉘어 좁아졌을 때 과목명이 줄바꿈되면서 칸 높이가 왼쪽 "내 시간표"보다 커져
+   버림(아래 파란 선을 넘어가는 문제). 그래서 이 칸(.chaincol)에서만 글자를 작게 줄이고,
+   과목명(.sub)은 한 줄로 잘라 보여주고, 동아리/자율활동처럼 짧은 활동명(.cl)만 2줄까지
+   허용 — 그래도 칸 높이(.slot)는 overflow:hidden으로 절대 안 넘어가게 고정. */
 .chainrow{display:flex;gap:14px;align-items:flex-start;overflow-x:auto;padding-bottom:6px}
 .chainrow .chaincol{flex:1;min-width:280px}
 .chainrow .chaincol h3{font-size:13px;margin-bottom:6px;white-space:nowrap}
+.chainrow .chaincol.swTierGrid table.tt col.phead{width:38px}
+.chainrow .chaincol.swTierGrid table.tt th .pnum{font-size:10px}
+.chainrow .chaincol.swTierGrid table.tt th .ptime{display:none}
+.chainrow .chaincol.swTierGrid table.tt td.slot{height:52px;overflow:hidden;padding:2px 1px}
+.chainrow .chaincol.swTierGrid table.tt td .cl{font-size:12px;line-height:1.15}
+.chainrow .chaincol.swTierGrid table.tt td .sub{font-size:8px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.chainrow .chaincol.swTierGrid table.tt td .elec{font-size:7.5px}
+.chainrow .chaincol.swTierGrid table.tt td .blk{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .legend i{width:11px;height:11px;border-radius:3px;display:inline-block;vertical-align:-1px;margin-right:4px}
 table.tt td.hit{background:#dce7ef!important;outline:2px solid #7d9cb3;outline-offset:-2px}
 .chip{display:inline-block;border:1px solid var(--hairline);background:#fff;border-radius:99px;padding:5px 16px;font-size:15.5px;font-weight:700;cursor:pointer;margin:0 8px 8px 0}
@@ -1851,6 +1862,18 @@ function fitSwHeaderText(container){
     }
   });
 }
+// 연쇄 이동 미리보기(.chaincol) 칸은 CSS로 이미 작게 줄여놨지만, 동아리/자율활동처럼 원래
+// 긴 활동명이 2줄로도 다 안 들어가는 극단적인 경우를 위한 안전장치 — 칸(.slot)보다 내용이
+// 크면(overflow:hidden으로 가려지고 있다는 뜻) .cl 글자를 칸에 맞을 때까지 더 줄인다.
+function fitSwCellText(container){
+  if(!container)return;
+  container.querySelectorAll('.chaincol table.tt td.slot').forEach(td=>{
+    const cl=td.querySelector('.cl');if(!cl)return;
+    cl.style.fontSize='';
+    let size=parseFloat(getComputedStyle(cl).fontSize),guard=0;
+    while(td.scrollHeight>td.clientHeight+0.5&&size>7&&guard<16){size-=0.5;cl.style.fontSize=size+'px';guard++}
+  });
+}
 function fitTtCellText(container){
   if(!window.matchMedia('(max-width:600px)').matches)return;
   container.querySelectorAll('table.tt td .blk').forEach(el=>{
@@ -2725,6 +2748,7 @@ function renderChainPreview(){
   const swResultEl2=document.getElementById('swResult');
   swResultEl2.innerHTML=h;
   fitSwHeaderText(swResultEl2);
+  fitSwCellText(swResultEl2);
 }
 function pickChain2(i){CHAIN2SEL=CHAINS2[i];renderChain2Preview()}
 function renderChain2Preview(){
@@ -2754,6 +2778,7 @@ function renderChain2Preview(){
   const swResultEl3=document.getElementById('swResult');
   swResultEl3.innerHTML=h;
   fitSwHeaderText(swResultEl3);
+  fitSwCellText(swResultEl3);
 }
 
 /* ===== 확정 ===== */
