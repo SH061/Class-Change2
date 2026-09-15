@@ -1833,6 +1833,24 @@ function ttTable(name,opts){
 function renderTimetable(){const w=document.getElementById('ttWrap');w.innerHTML=ttTable(ME,{self:true,effective:true,progress:PROGRESS_ALLOWED});fitTtCellText(w);renderTTSidebar()}
 // 모바일에서 요일 칸이 좁아 "1차 지필고사"처럼 긴 학사일정 제목이 줄바꿈되어 칸이 늘어나는 대신,
 // clsTT와 같은 방식으로 한 줄에 들어올 때까지 글자를 줄임.
+// 상대 교사 미리보기 — 특히 3인 순환교체처럼 시간표 칸이 여러 개로 나란히 쪼개질 때는
+// (주가 1개뿐이라 multi 단축 표시가 안 켜져도) 실제 칸 폭이 좁아질 수 있으므로, 화면 폭과
+// 무관하게 "요일(교시) 헤더 글자가 칸보다 크면" 칸에 맞을 때까지 줄임.
+function fitSwHeaderText(container){
+  if(!container)return;
+  container.querySelectorAll('table.tt thead th .pnum').forEach(el=>{
+    el.style.fontSize='';
+    let size=parseFloat(getComputedStyle(el).fontSize),guard=0;
+    while(el.scrollWidth>el.clientWidth+0.5&&size>8&&guard<24){size-=0.5;el.style.fontSize=size+'px';guard++}
+    // 그래도 안 들어가면(칸이 극단적으로 좁을 때) "월(9/21)"에서 괄호 속 날짜를 떼어내 "월"만 남김 —
+    // 단, 이 날짜가 표시되는 유일한 자리일 수 있으니(여러 주 보기일 때만 위에 별도로 "9/21~9/25"
+    // 구간 줄이 따로 있음) 그 구간 줄이 있는 표에서만 지운다.
+    if(el.scrollWidth>el.clientWidth+0.5&&el.closest('table')&&el.closest('table').querySelector('.wkrow')){
+      const m=el.textContent.match(/^([월화수목금])\(/);
+      if(m)el.textContent=m[1];
+    }
+  });
+}
 function fitTtCellText(container){
   if(!window.matchMedia('(max-width:600px)').matches)return;
   container.querySelectorAll('table.tt td .blk').forEach(el=>{
@@ -2541,7 +2559,9 @@ function updateSwActorUI(){
 function renderSwap(){
   if(!SWACTOR)SWACTOR=ME;
   updateSwActorUI();
-  document.getElementById('swGrid').innerHTML=ttTable(SWACTOR,{selectable:true,sel:PICK,effective:true,self:true,weeks:visibleWeekRange()});
+  const swGridEl=document.getElementById('swGrid');
+  swGridEl.innerHTML=ttTable(SWACTOR,{selectable:true,sel:PICK,effective:true,self:true,weeks:visibleWeekRange()});
+  fitSwHeaderText(swGridEl);
 }
 function dragStart(e,w,d,p){DRAG={w,d,p};PICK=null;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('t','1')}
 function dragOver(e){e.preventDefault();e.currentTarget.classList.add('drop-ok')}
@@ -2665,7 +2685,9 @@ function renderPreview(){
   // 보고 있는 주 범위(visibleWeekRange)를 그대로 유지해서, 표 규격이 미리보기 전후로 안 바뀌게 함.
   const myMarks={};myMarks[from.w+'-'+from.d+'-'+from.p]={k:'vac'};
   myMarks[to.w+'-'+to.d+'-'+to.p]={k:'fill',cell:{grade:my.grade,cls:my.cls,label:my.label,subj:my.subj||subjFull(SWACTOR,my),elective:false}};
-  document.getElementById('swGrid').innerHTML=ttTable(SWACTOR,{marks:myMarks,effective:true,weeks:visibleWeekRange()});
+  const swGridEl1=document.getElementById('swGrid');
+  swGridEl1.innerHTML=ttTable(SWACTOR,{marks:myMarks,effective:true,weeks:visibleWeekRange()});
+  fitSwHeaderText(swGridEl1);
   // 상대 교사 표는 우리 두 자리가 걸린 주(1~2개)만 — 다주 보기를 하고 있어도 상대는 그만큼만 보여줌.
   const pWeeks=[...new Set([from.w,to.w])].sort((a,b)=>a-b);
   let h='<button class="btn sm ghost" onclick="doMove(SWFROM,SWTO)">← 교사 목록</button>';
@@ -2674,7 +2696,9 @@ function renderPreview(){
   h+='<h3 style="font-size:14px;margin-bottom:6px">상대 교사 시간표 · '+P+'</h3>';
   h+='<div class="swTierGrid">'+ttTable(P,{marks,effective:true,weeks:pWeeks})+'</div>';
   h+='<button class="btn" style="margin-top:10px" onclick="confirmMove()">이 교사와 교체 확정</button>';
-  document.getElementById('swResult').innerHTML=h;
+  const swResultEl=document.getElementById('swResult');
+  swResultEl.innerHTML=h;
+  fitSwHeaderText(swResultEl);
 }
 function pickChain(i){CHAINSEL=CHAINS[i];renderChainPreview()}
 function renderChainPreview(){
@@ -2685,7 +2709,9 @@ function renderChainPreview(){
   markB[ch.S3.w+'-'+ch.S3.d+'-'+ch.S3.p]={k:'fill',cell:{grade:ch.cB.grade,cls:ch.cB.cls,label:ch.cB.label,subj:ch.cB.subj||subjFull(ch.B,ch.cB)}};
   const markC={};markC[ch.S3.w+'-'+ch.S3.d+'-'+ch.S3.p]={k:'vac'};
   markC[from.w+'-'+from.d+'-'+from.p]={k:'fill',cell:{grade:ch.cC.grade,cls:ch.cC.cls,label:ch.cC.label,subj:ch.cC.subj||subjFull(ch.C,ch.cC)}};
-  document.getElementById('swGrid').innerHTML=ttTable(SWACTOR,{marks:markA,effective:true,weeks:visibleWeekRange()});
+  const swGridEl2=document.getElementById('swGrid');
+  swGridEl2.innerHTML=ttTable(SWACTOR,{marks:markA,effective:true,weeks:visibleWeekRange()});
+  fitSwHeaderText(swGridEl2);
   const bWeeks=[...new Set([to.w,ch.S3.w])].sort((a,b)=>a-b);
   const cWeeks=[...new Set([ch.S3.w,from.w])].sort((a,b)=>a-b);
   let h='<button class="btn sm ghost" onclick="doMove(SWFROM,SWTO)">← 목록으로</button>';
@@ -2696,7 +2722,9 @@ function renderChainPreview(){
   h+='<div class="chaincol swTierGrid"><h3>'+ch.C+'</h3>'+ttTable(ch.C,{marks:markC,effective:true,weeks:cWeeks})+'</div>';
   h+='</div>';
   h+='<button class="btn" style="margin-top:10px" onclick="confirmChain()">이 조합으로 3명 모두 교체 확정</button>';
-  document.getElementById('swResult').innerHTML=h;
+  const swResultEl2=document.getElementById('swResult');
+  swResultEl2.innerHTML=h;
+  fitSwHeaderText(swResultEl2);
 }
 function pickChain2(i){CHAIN2SEL=CHAINS2[i];renderChain2Preview()}
 function renderChain2Preview(){
@@ -2711,7 +2739,9 @@ function renderChain2Preview(){
   // C: to 비워짐 → from 채워짐(Z반)
   const markC={};markC[to.w+'-'+to.d+'-'+to.p]={k:'vac'};
   markC[from.w+'-'+from.d+'-'+from.p]={k:'fill',cell:{grade:ch.Z.grade,cls:ch.Z.cls,label:ch.Z.label,subj:ch.cC.subj||subjFull(ch.C,ch.cC)}};
-  document.getElementById('swGrid').innerHTML=ttTable(SWACTOR,{marks:markA,effective:true,weeks:visibleWeekRange()});
+  const swGridEl3=document.getElementById('swGrid');
+  swGridEl3.innerHTML=ttTable(SWACTOR,{marks:markA,effective:true,weeks:visibleWeekRange()});
+  fitSwHeaderText(swGridEl3);
   const bcWeeks=[...new Set([from.w,to.w])].sort((a,b)=>a-b);
   let h='<button class="btn sm ghost" onclick="doMove(SWFROM,SWTO)">← 목록으로</button>';
   h+='<p class="muted" style="margin:10px 0">'+SWACTOR+' ↔ '+ch.B+' 은 <b>'+my.label+'</b> 반을, '+ch.B+' ↔ '+ch.C+' 은 <b>'+ch.clsZ+'</b> 반을 서로 맞바꿉니다.</p>';
@@ -2721,7 +2751,9 @@ function renderChain2Preview(){
   h+='<div class="chaincol swTierGrid"><h3>'+ch.C+'</h3>'+ttTable(ch.C,{marks:markC,effective:true,weeks:bcWeeks})+'</div>';
   h+='</div>';
   h+='<button class="btn" style="margin-top:10px" onclick="confirmChain2()">이 조합으로 3명 모두 교체 확정</button>';
-  document.getElementById('swResult').innerHTML=h;
+  const swResultEl3=document.getElementById('swResult');
+  swResultEl3.innerHTML=h;
+  fitSwHeaderText(swResultEl3);
 }
 
 /* ===== 확정 ===== */
